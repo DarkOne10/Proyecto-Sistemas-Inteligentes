@@ -5,31 +5,28 @@ Fire Waves, Fire Helix y Faltering; reglas de HP y Spare; agente Q-Learning
 tabular; entrenamiento, evaluación y demo con Pygame. No automatiza ni
 modifica Undertale.
 
+La guía completa de conceptos, instalación, comandos y resultados está en
+[GUIA_EJECUCION.md](GUIA_EJECUCION.md).
+
 ## Requisitos e instalación
 
 Se requiere Python 3.10 o posterior y conexión a internet para instalar las
 dependencias. Desde la carpeta del proyecto:
 
-```bash
-python -m venv .venv
-```
-
-Activa el entorno virtual y luego instala el paquete:
-
 ```powershell
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
+py -m venv .venv
+ .\.venv\Scripts\python.exe -m pip install -e ".[render,test]"
 ```
 
+En Windows no es necesario activar el entorno virtual. En macOS o Linux:
+
 ```bash
-# macOS o Linux
+python3 -m venv .venv
 source .venv/bin/activate
-```
-
-```bash
-python -m pip install --upgrade pip
 python -m pip install -e ".[render,test]"
 ```
+
+Los comandos de ejecución para Windows están en [GUIA_EJECUCION.md](GUIA_EJECUCION.md).
 
 ## Ejecutar
 
