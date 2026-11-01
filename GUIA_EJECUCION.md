@@ -137,6 +137,8 @@ Son resultados de una corrida concreta, no valores garantizados: dependen del mo
 
 ```powershell
 .\.venv\Scripts\python.exe -m toriel_rl.main --model results/q_table.json --attack paw_sweep --attack-only --seed 7
+
+.\.venv\Scripts\python.exe -m toriel_rl.main --model results/q_table.json --seed 7 (ataques aleatorios)
 ```
 
 - `--model`: carga la tabla Q creada durante el entrenamiento.
