@@ -3,18 +3,21 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class EnvConfig:
-    board_width: int = 240
-    board_height: int = 160
+    board_width: int = 192
+    board_height: int = 192
     soul_radius: float = 5.0
     soul_speed: float = 90.0
     max_hp: int = 20
     fire_damage: int = 4
     time_step: float = 1.0 / 30.0
-    episode_seconds: float = 12.0
+    episode_seconds: float = 4.0
     damage_cooldown: float = 0.5
     corridor_width_min: float = 48.0
     corridor_width_max: float = 72.0
     faltering_ball_count: int = 8
+    paw_sweep_duration: float = 1.5
+    max_spares: int = 12
+    fire_waves_hard_probability: float = 0.2
 
     def __post_init__(self) -> None:
         if self.board_width <= 0 or self.board_height <= 0:
@@ -33,3 +36,7 @@ class EnvConfig:
             raise ValueError("The corridor must leave room for the soul.")
         if self.faltering_ball_count < 0:
             raise ValueError("Faltering ball count cannot be negative.")
+        if self.paw_sweep_duration <= 0 or self.max_spares <= 0:
+            raise ValueError("Attack duration and spare limit must be positive.")
+        if not 0 <= self.fire_waves_hard_probability <= 1:
+            raise ValueError("Hard-mode probability must be between zero and one.")

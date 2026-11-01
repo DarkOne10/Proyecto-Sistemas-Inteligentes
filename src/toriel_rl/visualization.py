@@ -1,11 +1,15 @@
 from toriel_rl.attacks.faltering import FalteringAttack
 from toriel_rl.attacks.fire_helix import FireHelixAttack
+from toriel_rl.attacks.fire_waves import FireWavesAttack
+from toriel_rl.attacks.paw_sweep import PawSweepAttack
 
 
 def draw_environment(surface, env, pygame) -> None:
     config = env.config
     scale = surface.get_width() / config.board_width
+    board_height = int(config.board_height * scale)
     surface.fill((12, 14, 20))
+    pygame.draw.rect(surface, (245, 245, 245), (0, 0, surface.get_width(), board_height), 3)
 
     if isinstance(env.attack, FireHelixAttack):
         left = env.attack.corridor_left
@@ -36,14 +40,29 @@ def draw_environment(surface, env, pygame) -> None:
                     (int(x * scale), int(y * scale)),
                     max(2, int(4 * scale)),
                 )
+    elif isinstance(env.attack, FireWavesAttack):
+        safe_width = int(env.attack.safe_width * scale)
+        safe_height = int(env.attack.safe_height * scale)
+        pygame.draw.rect(surface, (24, 58, 52), (0, 0, safe_width, safe_height))
+        pygame.draw.rect(
+            surface,
+            (24, 58, 52),
+            (surface.get_width() - safe_width, 0, safe_width, safe_height),
+        )
+        pygame.draw.rect(surface, (79, 181, 137), (0, 0, safe_width, safe_height), 2)
+        pygame.draw.rect(
+            surface,
+            (79, 181, 137),
+            (surface.get_width() - safe_width, 0, safe_width, safe_height),
+            2,
+        )
+        _draw_fireballs(surface, env.attack.fireballs, scale, pygame)
+    elif isinstance(env.attack, PawSweepAttack):
+        _draw_fireballs(surface, env.attack.fireballs, scale, pygame)
+        for paw in env.attack.paws:
+            _draw_paw(surface, paw.x, paw.y, paw.radius, scale, pygame)
     elif isinstance(env.attack, FalteringAttack):
-        for fireball in env.attack.fireballs:
-            pygame.draw.circle(
-                surface,
-                (245, 114, 55),
-                (int(fireball.x * scale), int(fireball.y * scale)),
-                max(1, int(fireball.radius * scale)),
-            )
+        _draw_fireballs(surface, env.attack.fireballs, scale, pygame)
 
     soul_x = int(env.soul.x * scale)
     soul_y = int(env.soul.y * scale)
@@ -52,12 +71,49 @@ def draw_environment(surface, env, pygame) -> None:
         surface,
         (255, 55, 80),
         [
-            (soul_x, soul_y - radius),
-            (soul_x + radius, soul_y),
+            (soul_x - radius, soul_y - radius // 3),
+            (soul_x - radius, soul_y - radius),
+            (soul_x - radius // 2, soul_y - radius),
+            (soul_x, soul_y - radius // 2),
+            (soul_x + radius // 2, soul_y - radius),
+            (soul_x + radius, soul_y - radius),
+            (soul_x + radius, soul_y - radius // 3),
             (soul_x, soul_y + radius),
-            (soul_x - radius, soul_y),
         ],
     )
-    font = pygame.font.Font(None, 24)
-    label = font.render(f"HP {env.soul.hp}   {env.attack.name}", True, (245, 245, 245))
-    surface.blit(label, (8, 8))
+    font = pygame.font.Font(None, 23)
+    label = font.render(
+        f"HP {env.soul.hp}/{config.max_hp}  {env.attack.name}  Spare {env.spare_count}/{config.max_spares}",
+        True,
+        (245, 245, 245),
+    )
+    surface.blit(label, (8, board_height + 5))
+
+
+def _draw_fireballs(surface, fireballs, scale, pygame) -> None:
+    for fireball in fireballs:
+        pygame.draw.circle(
+            surface,
+            (255, 111, 53),
+            (int(fireball.x * scale), int(fireball.y * scale)),
+            max(2, int(fireball.radius * scale)),
+        )
+        pygame.draw.circle(
+            surface,
+            (255, 203, 99),
+            (int(fireball.x * scale), int(fireball.y * scale)),
+            max(1, int(fireball.radius * scale * 0.45)),
+        )
+
+
+def _draw_paw(surface, x, y, radius, scale, pygame) -> None:
+    center = (int(x * scale), int(y * scale))
+    paw_radius = max(4, int(radius * scale))
+    pygame.draw.circle(surface, (235, 231, 220), center, paw_radius)
+    for offset_x, offset_y in ((-0.58, -0.65), (-0.2, -0.9), (0.2, -0.9), (0.58, -0.65)):
+        pygame.draw.circle(
+            surface,
+            (235, 231, 220),
+            (int(center[0] + offset_x * paw_radius), int(center[1] + offset_y * paw_radius)),
+            max(2, int(paw_radius * 0.34)),
+        )
