@@ -59,6 +59,15 @@ El agente dispone de cinco acciones:
 
 No hay diagonales en esta versión.
 
+### Políticas utilizadas
+
+Una política es la regla que decide qué acción elegir en cada estado. Este proyecto usa varias, según la etapa:
+
+- **Entrenamiento Q-Learning, ε-greedy:** con probabilidad ε el agente explora eligiendo una acción aleatoria; de lo contrario, elige la acción con mayor valor Q conocido para ese estado. ε empieza en `1.0`, disminuye un factor `0.9995` al final de cada episodio y no baja de `0.03`. Al comenzar los episodios de combate completo vuelve como mínimo a `0.30` para permitir más exploración.
+- **Demo con modelo, codiciosa (greedy):** usa la acción de mayor valor Q, sin exploración aleatoria. Por eso repetir el mismo escenario y semilla suele producir las mismas decisiones.
+- **Baseline de evaluación, aleatoria:** elige uniformemente entre las cinco acciones. Sirve como referencia para comprobar si Q-Learning supera decisiones sin estrategia.
+- **Selección de ataques en combate completo:** el entorno elige al azar entre Fire Helix, Fire Waves y Paw Sweep al iniciar cada ronda. La semilla permite reproducir esa secuencia. En la evaluación de un patrón aislado, el ataque se fija mediante `--attack`.
+
 ### Recompensas y penalizaciones
 
 | Situación | Recompensa |
@@ -88,7 +97,7 @@ py -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[render,test]"
 ```
 
-No es obligatorio activar `.venv`. Si PowerShell bloquea `Activate.ps1` por la política de ejecución, puedes continuar con el comando anterior y anteponer ` .\.venv\Scripts\python.exe` a cada comando Python, como en los ejemplos siguientes. No hace falta cambiar la política del sistema.
+No es obligatorio activar `.venv`. Si PowerShell bloquea `Activate.ps1` por la política de ejecución, puedes continuar con el comando anterior y anteponer `\.venv\Scripts\python.exe` a cada comando Python, como en los ejemplos siguientes. No hace falta cambiar la política del sistema.
 
 ## 4. Entrenar Q-Learning
 
