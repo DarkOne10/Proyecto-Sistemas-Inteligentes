@@ -29,3 +29,25 @@
 - `curriculum.py`: 5 etapas (`intro_drifter` → `sine_dodge` → `gates_rain` → `spiral_evasion` → `slalom_focus`),
   `mask_k=3` en las etapas 1–2, criterios de promoción (retorno medio y tasa de finalización) y CLI `--curriculum` con reintentos por etapa.
 - Verificación: 91/91 tests; demos de los 4 modos/escenarios nuevos; PPO con acción focus: retorno +34.7 vs −48.1 del aleatorio (completion 100 % vs 0 %).
+
+## S3 — Acción continua, SAC, patrones avanzados y escenarios dinámicos
+
+**Tests:** 120/120
+
+- Patrones nuevos (16 en total):
+  - `cross_fire` (A6): balas blancas cruzando el tablero desde lados opuestos en filas intercaladas.
+  - `ricochet` (A7): balas rápidas anguladas que rebotan en paredes y bordes antes de salir.
+  - `aimed_burst` (A8): ráfagas francotiradoras de 3 darts disparadas desde un borde aleatorio, apuntando al SOUL.
+  - `zigzag_rain` (A10): lluvia blanca que zigzaguea rebotando entre las paredes laterales.
+  - `vortex` (A11): viento rotacional — empuje externo tangencial (protocolo `external_displacement(dt, soul_x, soul_y)`, ahora de 3 argumentos) + balas azules en órbita a radio constante; montar la corriente no cuenta como movimiento, así que el azul es seguro si te quedas quieto.
+- Modos nuevos (5 en total):
+  - `endurance` (B4): episodio de 45 s; el nivel escala 1→5 cada 10 s mediante el hook `BaseMode.dynamic_level` y cada hita paga +2.0 una sola vez (`extra_reward`).
+  - `mixup` (B5): aleatorización de dominio — cada episodio re-ruletea el nivel (1–3) en `reset` y el patrón (excluyendo `empty`/`pickups`) mediante el hook `select_pattern`; el env releer `level = self.mode.level` después de `mode.reset`.
+- Escenarios nuevos (6 en total):
+  - `pinball` (D4): 4 topes de 16×16 alrededor de la arena, `drifter` por defecto.
+  - `narrow_corridor` (D5): pasillo 192×64, `dart_volley` por defecto.
+  - `collapsing_arena` (D6): el tablero se encoge hasta la escala 0.7 en 15 s (`board_size` dinámico), `rain` por defecto.
+- Acción continua: `Box(-1, 1, (2,))`, zona muerta 0.1 (entrada ≤ 0.1 → quieto, `moving=False`), normalización al disco unitario, sin bit de foco.
+- Entrenamiento: `--algo ppo|sac`; SAC exige `action_mode="continuous"` (el CLI lo activa automáticamente), modelo `sandbox_{algo}.zip`, `--curriculum` queda como PPO-only (guard en CLI).
+- CLI demo con nuevo `--action-mode`.
+- Verificación: 120/120 tests (incluye `check_env` del entorno continuo y smoke de SAC); demos de los 5 patrones, 2 modos, 3 escenarios y acción continua; SAC end-to-end (entrena → evalúa → guarda `sandbox_sac.zip`) y guard `--curriculum --algo sac`.

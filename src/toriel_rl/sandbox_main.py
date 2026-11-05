@@ -13,6 +13,7 @@ def main() -> None:
     parser.add_argument("--scenario", choices=(*SCENARIO_TYPES, "none"), default="none")
     parser.add_argument("--mode", choices=(*MODES, "none"), default="none")
     parser.add_argument("--level", type=int, default=1)
+    parser.add_argument("--action-mode", choices=("discrete", "focus", "continuous"))
     parser.add_argument("--seconds", type=float, default=30.0)
     parser.add_argument("--steps", type=int, help="Stop after this many frames.")
     args = parser.parse_args()
@@ -26,6 +27,7 @@ def main() -> None:
         pattern=args.pattern,
         scenario=None if args.scenario == "none" else args.scenario,
         mode=None if args.mode == "none" else args.mode,
+        action_mode=args.action_mode,
         level=args.level,
     )
     observation, info = env.reset(seed=args.seed)

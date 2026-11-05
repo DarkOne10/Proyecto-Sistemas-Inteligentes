@@ -15,6 +15,7 @@ from toriel_rl.rewards import RewardConfig
 from toriel_rl.scenarios import BaseScenario, create_scenario
 
 DODGE_GAP = 12.0
+CONTINUOUS_DEADZONE = 0.1
 
 
 class SoulSandboxEnv(gym.Env):
@@ -50,14 +51,15 @@ class SoulSandboxEnv(gym.Env):
         self.default_mode = mode
         self.default_level = level
         resolved_action_mode = action_mode or action_mode_for(mode) or "discrete"
-        if resolved_action_mode not in ("discrete", "focus"):
+        if resolved_action_mode not in ("discrete", "focus", "continuous"):
             raise ValueError(f"Unsupported action mode: {action_mode}")
         self.action_mode = resolved_action_mode
-        self.action_space = (
-            spaces.Discrete(9)
-            if self.action_mode == "discrete"
-            else spaces.MultiDiscrete([9, 2])
-        )
+        if self.action_mode == "discrete":
+            self.action_space = spaces.Discrete(9)
+        elif self.action_mode == "focus":
+            self.action_space = spaces.MultiDiscrete([9, 2])
+        else:
+            self.action_space = spaces.Box(-1.0, 1.0, shape=(2,), dtype=np.float32)
         self.observation_space = spaces.Box(
             low=-1.0,
             high=1.0,
@@ -130,6 +132,7 @@ class SoulSandboxEnv(gym.Env):
             )
         self.mode.level = level
         self.mode.reset(self.np_random)
+        level = self.mode.level
 
         scenario_name = options.get("scenario", self.default_scenario)
         self.scenario = create_scenario(scenario_name, self.config) if scenario_name else None
@@ -140,6 +143,8 @@ class SoulSandboxEnv(gym.Env):
         pattern_name = options.get("pattern", self.default_pattern)
         if pattern_name is None and self.scenario is not None:
             pattern_name = self.scenario.default_pattern
+        if pattern_name is None:
+            pattern_name = self.mode.select_pattern(self.np_random, self.available_patterns)
         if pattern_name is None:
             pattern_name = self.mode.default_pattern
         if pattern_name is None:
@@ -181,30 +186,60 @@ class SoulSandboxEnv(gym.Env):
             raise RuntimeError("Call reset() before stepping a finished episode.")
         if self.action_mode == "focus":
             action = np.asarray(action, dtype=np.int64)
+        elif self.action_mode == "continuous":
+            action = np.asarray(action, dtype=np.float32).reshape(-1)
         if not self.action_space.contains(action):
             raise ValueError(f"Invalid action: {action}")
 
+        focus = False
+        move_action = 0
+        dx = dy = 0.0
         if self.action_mode == "focus":
             move_action, focus = (int(part) for part in action)
+            moving = move_action != 0
+        elif self.action_mode == "continuous":
+            dx, dy = float(action[0]), float(action[1])
+            magnitude = hypot(dx, dy)
+            if magnitude <= CONTINUOUS_DEADZONE:
+                dx = dy = 0.0
+                moving = False
+            else:
+                if magnitude > 1.0:
+                    dx, dy = dx / magnitude, dy / magnitude
+                moving = True
         else:
-            move_action, focus = int(action), False
+            move_action = int(action)
+            moving = move_action != 0
 
-        moving = move_action != 0
         self._focus = focus
         if focus:
             self._focus_steps += 1
         speed = self.config.soul_speed * (0.5 if focus else 1.0)
         self._refresh_board()
-        self.soul.move(
-            move_action, speed, self.config.time_step, self.board_width, self.board_height
-        )
+        if self.action_mode == "continuous":
+            self.soul.x = min(
+                max(self.soul.x + dx * speed * self.config.time_step, self.soul.radius),
+                self.board_width - self.soul.radius,
+            )
+            self.soul.y = min(
+                max(self.soul.y + dy * speed * self.config.time_step, self.soul.radius),
+                self.board_height - self.soul.radius,
+            )
+        else:
+            self.soul.move(
+                move_action, speed, self.config.time_step, self.board_width, self.board_height
+            )
         self.pattern.update(self.config.time_step, self.soul.x, self.soul.y)
         if self.scenario is not None:
             self.scenario.update(self.config.time_step, self.soul.x, self.soul.y)
 
-        push_x, push_y = self.pattern.external_displacement(self.config.time_step)
+        push_x, push_y = self.pattern.external_displacement(
+            self.config.time_step, self.soul.x, self.soul.y
+        )
         if self.scenario is not None:
-            scenario_x, scenario_y = self.scenario.external_displacement(self.config.time_step)
+            scenario_x, scenario_y = self.scenario.external_displacement(
+                self.config.time_step, self.soul.x, self.soul.y
+            )
             push_x += scenario_x
             push_y += scenario_y
         if push_x or push_y:
@@ -277,6 +312,13 @@ class SoulSandboxEnv(gym.Env):
         self._clock = None
 
     def _refresh_board(self) -> None:
+        dynamic = self.mode.dynamic_level(self._elapsed)
+        if dynamic is not None and dynamic > self.pattern.level:
+            self.level = dynamic
+            self.mode.level = dynamic
+            self.pattern.level = dynamic
+            if self.scenario is not None:
+                self.scenario.level = dynamic
         size = None
         if self.mode is not None:
             size = self.mode.board_size(self._elapsed)

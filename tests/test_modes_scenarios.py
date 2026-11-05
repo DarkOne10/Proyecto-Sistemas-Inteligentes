@@ -32,7 +32,7 @@ class StaticPattern:
     def remove(self, bullet: Fireball) -> None:
         self._bullets.remove(bullet)
 
-    def external_displacement(self, dt: float) -> tuple[float, float]:
+    def external_displacement(self, dt: float, soul_x: float, soul_y: float) -> tuple[float, float]:
         return (0.0, 0.0)
 
 
@@ -248,6 +248,154 @@ class SlalomSwitchingTests(unittest.TestCase):
         self.assertEqual(env.pattern.name, "empty")
         self.assertEqual(info["damage"], 4)
         self.assertEqual(info["damage_by_color"], {"orange": 4})
+
+
+class EnduranceModeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+
+    def _context(self, elapsed: float) -> StepContext:
+        soul = Soul(x=96, y=96, radius=5, hp=20)
+        return StepContext(
+            elapsed=elapsed, soul=soul, bullets=(), damage=0, greens=0, greens_total=0,
+            nearest_gap=50.0, moving=False, focus=False, iframes=False,
+            whites_only=True, level=1, terminated=False,
+        )
+
+    def test_duration_pattern_and_level_ramp(self) -> None:
+        mode = create_mode("endurance", self.config)
+        mode.reset(np.random.default_rng(1))
+
+        self.assertEqual(mode.duration_seconds, 45.0)
+        self.assertEqual(mode.default_pattern, "rain")
+        self.assertEqual(mode.dynamic_level(0.0), 1)
+        self.assertEqual(mode.dynamic_level(9.9), 1)
+        self.assertEqual(mode.dynamic_level(10.0), 2)
+        self.assertEqual(mode.dynamic_level(44.9), 5)
+        self.assertEqual(mode.dynamic_level(999.0), 5)
+
+    def test_milestone_reward_pays_once_per_milestone(self) -> None:
+        mode = create_mode("endurance", self.config)
+        mode.reset(np.random.default_rng(1))
+
+        self.assertEqual(mode.extra_reward(self._context(9.0)), 0.0)
+        self.assertAlmostEqual(mode.extra_reward(self._context(10.0)), 2.0)
+        self.assertEqual(mode.extra_reward(self._context(11.0)), 0.0)
+        self.assertAlmostEqual(mode.extra_reward(self._context(20.0)), 2.0)
+
+    def test_env_escalates_level_mid_episode(self) -> None:
+        env = SoulSandboxEnv(mode="endurance")
+        env.reset(seed=1)
+
+        self.assertEqual(env.steps_per_episode, 1350)
+        env._elapsed = 10.0
+        _, _, _, _, info = env.step(0)
+
+        self.assertEqual(info["level"], 2)
+        self.assertEqual(env.pattern.level, 2)
+
+
+class MixupModeTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+
+    def test_reset_rerolls_level_between_one_and_three(self) -> None:
+        mode = create_mode("mixup", self.config)
+        levels = set()
+        for seed in range(8):
+            mode.reset(np.random.default_rng(seed))
+            levels.add(mode.level)
+
+        self.assertTrue(all(1 <= level <= 3 for level in levels))
+        self.assertGreater(len(levels), 1)
+
+    def test_select_pattern_avoids_trivial_patterns(self) -> None:
+        mode = create_mode("mixup", self.config)
+        for seed in range(8):
+            name = mode.select_pattern(
+                np.random.default_rng(seed), SoulSandboxEnv.available_patterns
+            )
+
+            self.assertIn(name, SoulSandboxEnv.available_patterns)
+            self.assertNotIn(name, ("empty", "pickups"))
+
+    def test_env_rolls_fresh_pattern_and_level(self) -> None:
+        env = SoulSandboxEnv(mode="mixup")
+
+        _, first = env.reset(seed=1)
+        self.assertNotIn(first["pattern"], ("empty", "pickups"))
+        self.assertIn(first["level"], (1, 2, 3))
+        self.assertEqual(first["level"], env.mode.level)
+        self.assertEqual(env.pattern.level, env.mode.level)
+
+        _, second = env.reset(seed=2)
+        self.assertNotIn(second["pattern"], ("empty", "pickups"))
+        self.assertEqual(second["level"], env.mode.level)
+
+
+class PinballTests(unittest.TestCase):
+    def test_four_bumpers_and_drifter_default(self) -> None:
+        config = EnvConfig()
+        scenario = create_scenario("pinball", config)
+
+        self.assertEqual(scenario.default_pattern, "drifter")
+        obstacles = scenario.obstacles()
+        self.assertEqual(len(obstacles), 4)
+        for _, _, width, height in obstacles:
+            self.assertEqual((width, height), (16.0, 16.0))
+
+        env = SoulSandboxEnv(scenario="pinball")
+        _, info = env.reset(seed=1)
+
+        self.assertEqual(info["pattern"], "drifter")
+        self.assertEqual(len(env.obstacles), 4)
+
+
+class NarrowCorridorTests(unittest.TestCase):
+    def test_short_corridor_defaults_to_dart_volley(self) -> None:
+        config = EnvConfig()
+        scenario = create_scenario("narrow_corridor", config)
+
+        self.assertEqual(scenario.base_size, (192.0, 64.0))
+        self.assertEqual(scenario.default_pattern, "dart_volley")
+
+        env = SoulSandboxEnv(scenario="narrow_corridor", config=config)
+        _, info = env.reset(seed=1)
+
+        self.assertEqual((env.board_width, env.board_height), (192.0, 64.0))
+        self.assertEqual(info["pattern"], "dart_volley")
+        self.assertLess(env.soul.y, 64.0)
+
+
+class CollapsingArenaTests(unittest.TestCase):
+    def test_board_shrinks_to_seventy_percent_over_fifteen_seconds(self) -> None:
+        config = EnvConfig()
+        scenario = create_scenario("collapsing_arena", config)
+
+        self.assertEqual(scenario.default_pattern, "rain")
+        self.assertEqual(scenario.board_size(0.0), (192.0, 192.0))
+        self.assertAlmostEqual(scenario.board_size(7.5)[0], 163.2, places=6)
+        self.assertAlmostEqual(scenario.board_size(15.0)[0], 134.4, places=6)
+        self.assertAlmostEqual(scenario.board_size(60.0)[0], 134.4, places=6)
+
+    def test_env_board_collapses_and_keeps_soul_inside(self) -> None:
+        env = SoulSandboxEnv(scenario="collapsing_arena")
+        env.reset(seed=1)
+
+        env._elapsed = 15.0
+        env.step(0)
+
+        self.assertAlmostEqual(env.board_width, 134.4, places=6)
+        self.assertLessEqual(env.soul.x, env.board_width - env.soul.radius)
+        self.assertLessEqual(env.soul.y, env.board_height - env.soul.radius)
+
+
+class S3RegistryTests(unittest.TestCase):
+    def test_s3_modes_and_scenarios_register(self) -> None:
+        self.assertIn("endurance", MODES)
+        self.assertIn("mixup", MODES)
+        for name in ("pinball", "narrow_corridor", "collapsing_arena"):
+            self.assertIn(name, SCENARIO_TYPES)
 
 
 if __name__ == "__main__":

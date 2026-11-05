@@ -70,9 +70,9 @@ def train_agent(
     output_dir: str | Path = "results",
     config: EnvConfig | None = None,
     rows: list[dict] | None = None,
+    algo: str = "ppo",
     **env_kwargs,
 ) -> tuple[Path, list[dict]]:
-    from stable_baselines3 import PPO
     from stable_baselines3.common.env_util import make_vec_env
 
     if timesteps <= 0:
@@ -87,9 +87,9 @@ def train_agent(
         return EpisodeRecorder(SoulSandboxEnv(config=config, **env_kwargs), rows)
 
     vec_env = make_vec_env(factory, n_envs=n_envs, seed=seed)
-    model = PPO("MlpPolicy", vec_env, verbose=0, seed=seed)
+    model = _make_model(algo, vec_env, seed)
     model.learn(total_timesteps=timesteps, progress_bar=False)
-    model_path = output_path / "sandbox_ppo.zip"
+    model_path = output_path / f"sandbox_{algo}.zip"
     model.save(model_path)
     vec_env.close()
 
@@ -97,13 +97,42 @@ def train_agent(
     return model_path, rows
 
 
-def evaluate(model_path: str | Path, episodes: int = 10, seed: int = 10_000, **env_kwargs) -> dict:
+def _make_model(algo: str, vec_env, seed: int):
+    from gymnasium import spaces
     from stable_baselines3 import PPO
 
+    if algo == "ppo":
+        return PPO("MlpPolicy", vec_env, verbose=0, seed=seed)
+    if algo == "sac":
+        from stable_baselines3 import SAC
+
+        if not isinstance(vec_env.action_space, spaces.Box):
+            raise ValueError("SAC requires action_mode='continuous'.")
+        return SAC("MlpPolicy", vec_env, verbose=0, seed=seed, buffer_size=10_000)
+    raise ValueError(f"Unknown algorithm: {algo}")
+
+
+def _load_model(algo: str, model_path: str | Path):
+    if algo == "sac":
+        from stable_baselines3 import SAC
+
+        return SAC.load(model_path)
+    from stable_baselines3 import PPO
+
+    return PPO.load(model_path)
+
+
+def evaluate(
+    model_path: str | Path,
+    episodes: int = 10,
+    seed: int = 10_000,
+    algo: str = "ppo",
+    **env_kwargs,
+) -> dict:
     if episodes <= 0:
         raise ValueError("Episodes must be positive.")
 
-    model = PPO.load(model_path)
+    model = _load_model(algo, model_path)
     env = SoulSandboxEnv(**env_kwargs)
     returns = []
     hps = []
@@ -166,6 +195,7 @@ def train_curriculum(
     eval_episodes: int = 5,
     max_rounds: int = 3,
     config: EnvConfig | None = None,
+    algo: str = "ppo",
     stages=None,
 ) -> list[dict]:
     curriculum = Curriculum(stages)
@@ -187,12 +217,14 @@ def train_curriculum(
                 output_dir=stage_dir,
                 config=config,
                 rows=rows,
+                algo=algo,
                 **stage.env_kwargs,
             )
             stats = evaluate(
                 model_path,
                 episodes=eval_episodes,
                 seed=seed + 1_000 + round_index,
+                algo=algo,
                 **stage.env_kwargs,
             )
             print(
@@ -216,14 +248,15 @@ def train_curriculum(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Train a PPO agent in the Red SOUL sandbox.")
+    parser = argparse.ArgumentParser(description="Train a PPO/SAC agent in the Red SOUL sandbox.")
     parser.add_argument("--timesteps", type=int, default=20_000)
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--pattern", choices=SoulSandboxEnv.available_patterns)
     parser.add_argument("--scenario")
     parser.add_argument("--mode")
-    parser.add_argument("--action-mode", choices=("discrete", "focus"))
+    parser.add_argument("--action-mode", choices=("discrete", "focus", "continuous"))
     parser.add_argument("--level", type=int, default=1)
+    parser.add_argument("--algo", choices=("ppo", "sac"), default="ppo")
     parser.add_argument("--n-envs", type=int, default=4)
     parser.add_argument("--eval-episodes", type=int, default=10)
     parser.add_argument("--max-rounds", type=int, default=3)
@@ -242,8 +275,12 @@ def main() -> None:
     }
     if args.action_mode:
         env_kwargs["action_mode"] = args.action_mode
+    elif args.algo == "sac":
+        env_kwargs["action_mode"] = "continuous"
 
     if args.curriculum:
+        if args.algo != "ppo":
+            parser.error("--curriculum only supports --algo ppo.")
         history = train_curriculum(
             seed=args.seed,
             n_envs=args.n_envs,
@@ -263,17 +300,18 @@ def main() -> None:
             args.seed,
             n_envs=args.n_envs,
             output_dir=args.output_dir,
+            algo=args.algo,
             **env_kwargs,
         )
         recent = rows[-min(50, len(rows)):]
         if recent:
             print(
-                f"Trained PPO for {args.timesteps} steps | episodes: {len(rows)} | "
+                f"Trained {args.algo.upper()} for {args.timesteps} steps | episodes: {len(rows)} | "
                 f"recent mean return: {sum(r['return'] for r in recent) / len(recent):.2f} | "
                 f"recent mean HP: {sum(r['hp'] for r in recent) / len(recent):.1f}"
             )
 
-    trained = evaluate(model_path, episodes=args.eval_episodes, **env_kwargs)
+    trained = evaluate(model_path, episodes=args.eval_episodes, algo=args.algo, **env_kwargs)
     random = evaluate_random(episodes=args.eval_episodes, **env_kwargs)
     print(f"Trained: {trained}")
     print(f"Random:  {random}")

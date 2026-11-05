@@ -1,4 +1,5 @@
 import unittest
+from math import hypot
 
 import numpy as np
 from gymnasium.utils.env_checker import check_env
@@ -32,7 +33,7 @@ class StaticPattern(BasePattern):
     def bullets(self) -> list[Fireball]:
         return self._bullets
 
-    def external_displacement(self, dt: float) -> tuple[float, float]:
+    def external_displacement(self, dt: float, soul_x: float, soul_y: float) -> tuple[float, float]:
         return self._push
 
 
@@ -190,7 +191,7 @@ class SoulSandboxEnvTests(unittest.TestCase):
     def test_external_displacement_pushes_soul(self) -> None:
         env = SoulSandboxEnv(config=EnvConfig(episode_seconds=10.0))
         env.reset(seed=7, options={"pattern": "empty"})
-        self.assertEqual(EmptyPattern(env.config).external_displacement(0.1), (0.0, 0.0))
+        self.assertEqual(EmptyPattern(env.config).external_displacement(0.1, 96.0, 96.0), (0.0, 0.0))
         env.pattern = StaticPattern(env.config, push=(2.0, -1.0))
 
         env.step(0)
@@ -294,6 +295,68 @@ class FocusActionTests(unittest.TestCase):
             env.step([9, 0])
         with self.assertRaises(ValueError):
             env.step([1, 2])
+
+
+class ContinuousActionTests(unittest.TestCase):
+    def test_continuous_uses_box_and_normalizes_diagonal(self) -> None:
+        env = SoulSandboxEnv(action_mode="continuous", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=1, options={"pattern": "empty"})
+
+        self.assertEqual(env.action_space.shape, (2,))
+        self.assertEqual(env.action_space.dtype, np.float32)
+        _, _, _, _, info = env.step([1.0, 1.0])
+
+        moved = hypot(env.soul.x - 96.0, env.soul.y - 96.0)
+        self.assertAlmostEqual(moved, env.config.soul_speed * env.config.time_step, places=6)
+        self.assertTrue(info["moving"])
+        self.assertEqual(info["action_mode"], "continuous")
+
+    def test_deadzone_keeps_soul_still(self) -> None:
+        env = SoulSandboxEnv(action_mode="continuous", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=2, options={"pattern": "empty"})
+
+        _, _, _, _, info = env.step([0.05, -0.05])
+
+        self.assertEqual((env.soul.x, env.soul.y), (96.0, 96.0))
+        self.assertFalse(info["moving"])
+
+    def test_movement_flag_drives_color_rules(self) -> None:
+        env = SoulSandboxEnv(action_mode="continuous", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=3, options={"pattern": "empty"})
+        env.pattern = StaticPattern(
+            env.config,
+            bullets=[Fireball(x=env.soul.x, y=env.soul.y, vx=0.0, vy=0.0, color="blue")],
+        )
+
+        _, _, _, _, info = env.step([0.0, 0.0])
+        self.assertEqual(info["damage"], 0)
+
+        env._iframes = 0.0
+        env.pattern = StaticPattern(
+            env.config,
+            bullets=[Fireball(x=env.soul.x, y=env.soul.y, vx=0.0, vy=0.0, color="orange")],
+        )
+        _, _, _, _, info = env.step([0.5, 0.0])
+        self.assertEqual(info["damage"], 0)
+
+        env._iframes = 0.0
+        env.pattern = StaticPattern(
+            env.config,
+            bullets=[Fireball(x=env.soul.x, y=env.soul.y, vx=0.0, vy=0.0, color="orange")],
+        )
+        _, _, _, _, info = env.step([0.0, 0.0])
+        self.assertEqual(info["damage"], 4)
+        self.assertEqual(info["damage_by_color"], {"orange": 4})
+
+    def test_invalid_continuous_action_rejected(self) -> None:
+        env = SoulSandboxEnv(action_mode="continuous", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=4, options={"pattern": "empty"})
+
+        with self.assertRaises(ValueError):
+            env.step([0.5, 0.5, 0.5])
+
+    def test_continuous_environment_passes_gymnasium_checker(self) -> None:
+        check_env(SoulSandboxEnv(action_mode="continuous"), skip_render_check=True)
 
 
 class EpisodeMetricsTests(unittest.TestCase):

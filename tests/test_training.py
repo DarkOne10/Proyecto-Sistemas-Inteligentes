@@ -46,6 +46,44 @@ class SandboxTrainingTests(unittest.TestCase):
                 self.assertIn("mean_hp", stats)
                 self.assertIn("completion_rate", stats)
 
+    def test_sac_training_runs_on_continuous_env(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            model_path, rows = train_agent(
+                timesteps=256,
+                seed=5,
+                algo="sac",
+                action_mode="continuous",
+                pattern="drifter",
+                n_envs=2,
+                output_dir=temporary_directory,
+            )
+
+            self.assertEqual(model_path.name, "sandbox_sac.zip")
+            self.assertTrue(model_path.exists())
+            self.assertGreater(len(rows), 0)
+            self.assertEqual(rows[0]["pattern"], "drifter")
+
+            stats = evaluate(
+                model_path,
+                episodes=1,
+                algo="sac",
+                action_mode="continuous",
+                pattern="drifter",
+            )
+            self.assertIn("mean_return", stats)
+
+    def test_sac_rejects_discrete_env(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            with self.assertRaisesRegex(ValueError, "continuous"):
+                train_agent(
+                    timesteps=64,
+                    seed=6,
+                    algo="sac",
+                    pattern="drifter",
+                    n_envs=1,
+                    output_dir=temporary_directory,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,13 +1,17 @@
 from toriel_rl.config import EnvConfig
 from toriel_rl.modes.base import BaseMode, StepContext
 from toriel_rl.modes.collector import CollectorMode
+from toriel_rl.modes.endurance import EnduranceMode
 from toriel_rl.modes.focus_precision import FocusPrecisionMode
+from toriel_rl.modes.mixup import MixupMode
 from toriel_rl.modes.survival import SurvivalMode
 
 MODES: dict[str, type[BaseMode]] = {
     "survival": SurvivalMode,
     "collector": CollectorMode,
     "focus_precision": FocusPrecisionMode,
+    "endurance": EnduranceMode,
+    "mixup": MixupMode,
 }
 
 

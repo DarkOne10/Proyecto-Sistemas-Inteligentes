@@ -31,7 +31,7 @@ class BasePattern(ABC):
     def remove(self, bullet: Fireball) -> None:
         self.bullets().remove(bullet)
 
-    def external_displacement(self, dt: float) -> tuple[float, float]:
+    def external_displacement(self, dt: float, soul_x: float, soul_y: float) -> tuple[float, float]:
         """Positional push applied to the SOUL after input movement (default: none)."""
         return (0.0, 0.0)
 

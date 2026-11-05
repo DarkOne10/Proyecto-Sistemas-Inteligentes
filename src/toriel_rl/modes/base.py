@@ -57,3 +57,11 @@ class BaseMode(ABC):
 
     def obstacles(self) -> list[tuple[float, float, float, float]]:
         return []
+
+    def dynamic_level(self, elapsed: float) -> int | None:
+        """Escalate difficulty mid-episode (return None to keep the reset level)."""
+        return None
+
+    def select_pattern(self, rng, available: tuple[str, ...]) -> str | None:
+        """Re-roll the episode pattern during reset (return None to use the defaults)."""
+        return None

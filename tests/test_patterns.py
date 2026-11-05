@@ -3,17 +3,23 @@ from math import atan2, hypot, tau
 
 import numpy as np
 
+from toriel_rl.bullets.aimed_burst import AimedBurstPattern
 from toriel_rl.bullets.blue_ring import BlueRingPattern
 from toriel_rl.bullets.blue_rain import BlueRainPattern
+from toriel_rl.bullets.cross_fire import CrossFirePattern
 from toriel_rl.bullets.dart_volley import DartVolleyPattern
 from toriel_rl.bullets.drifter import DrifterPattern
 from toriel_rl.bullets.homing_sine import HomingSinePattern
 from toriel_rl.bullets.orange_gates import OrangeGatePattern
 from toriel_rl.bullets.pickups import PickupsPattern
 from toriel_rl.bullets.rain import RainPattern
+from toriel_rl.bullets.ricochet import RicochetPattern
 from toriel_rl.bullets.sine_sweeper import SineSweeperPattern
 from toriel_rl.bullets.spiral_barrage import SpiralBarragePattern
+from toriel_rl.bullets.vortex import VortexPattern
+from toriel_rl.bullets.zigzag_rain import ZigzagRainPattern
 from toriel_rl.config import EnvConfig
+from toriel_rl.entities.fireball import Fireball
 
 
 class SineSweeperTests(unittest.TestCase):
@@ -289,6 +295,203 @@ class BlueRainTests(unittest.TestCase):
         self.assertTrue(all(bullet.color == "blue" for bullet in bullets))
         self.assertTrue(all(bullet.vy > 0.0 for bullet in bullets))
         self.assertTrue(all(bullet.y > -self.config.soul_radius for bullet in bullets))
+
+
+class CrossFireTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+        self.rng = np.random.default_rng(17)
+
+    def test_bullets_alternate_directions_from_opposite_sides(self) -> None:
+        pattern = CrossFirePattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+        for _ in range(int(pattern.spawn_interval / self.config.time_step) * 3 + 2):
+            pattern.update(self.config.time_step, 96.0, 96.0)
+
+        bullets = pattern.bullets()
+        self.assertGreaterEqual(len(bullets), 3)
+        self.assertTrue(all(bullet.color == "white" for bullet in bullets))
+        self.assertTrue(all(bullet.vy == 0.0 for bullet in bullets))
+        signs = [1.0 if bullet.vx > 0.0 else -1.0 for bullet in bullets]
+        self.assertNotEqual(signs[0], signs[1])
+
+    def test_crossed_bullets_leave_the_board(self) -> None:
+        pattern = CrossFirePattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+
+        for _ in range(int(10.0 / self.config.time_step)):
+            pattern.update(self.config.time_step, 96.0, 96.0)
+
+        self.assertGreater(len(pattern.bullets()), 0)
+        self.assertLessEqual(len(pattern.bullets()), 8)
+        for bullet in pattern.bullets():
+            self.assertLessEqual(bullet.x, self.config.board_width + 20.0)
+            self.assertGreaterEqual(bullet.x, -20.0)
+
+
+class RicochetTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+        self.rng = np.random.default_rng(18)
+
+    def test_bullets_bounce_inside_the_board(self) -> None:
+        pattern = RicochetPattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+
+        for _ in range(int(4.0 / self.config.time_step)):
+            pattern.update(self.config.time_step, 96.0, 96.0)
+            for bullet in pattern.bullets():
+                self.assertGreaterEqual(bullet.y, bullet.radius - 1e-6)
+                self.assertLessEqual(bullet.y, self.config.board_height - bullet.radius + 1e-6)
+
+        self.assertGreater(len(pattern.bullets()), 0)
+        self.assertTrue(all(bullet.color == "white" for bullet in pattern.bullets()))
+
+    def test_higher_level_fires_faster_bullets(self) -> None:
+        easy = RicochetPattern(self.config)
+        easy.level = 1
+        hard = RicochetPattern(self.config)
+        hard.level = 4
+
+        self.assertGreater(hard.speed, easy.speed)
+        self.assertLess(hard.spawn_interval, easy.spawn_interval)
+
+
+class AimedBurstTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+        self.rng = np.random.default_rng(19)
+
+    def test_burst_fires_three_shots_aimed_at_the_soul(self) -> None:
+        pattern = AimedBurstPattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+        soul_x, soul_y = 96.0, 96.0
+        for _ in range(int(pattern.burst_interval / self.config.time_step) + 12):
+            pattern.update(self.config.time_step, soul_x, soul_y)
+
+        bullets = pattern.bullets()
+        self.assertEqual(len(bullets), 3)
+        self.assertTrue(all(bullet.color == "white" for bullet in bullets))
+        for bullet in bullets:
+            self.assertAlmostEqual(
+                hypot(bullet.vx, bullet.vy), pattern.speed, delta=pattern.speed * 0.05
+            )
+            aim = atan2(soul_y - bullet.y, soul_x - bullet.x)
+            heading = atan2(bullet.vy, bullet.vx)
+            difference = abs((aim - heading + np.pi) % tau - np.pi)
+            self.assertLess(difference, 0.25)
+
+    def test_higher_level_reduces_burst_interval(self) -> None:
+        easy = AimedBurstPattern(self.config)
+        easy.level = 1
+        hard = AimedBurstPattern(self.config)
+        hard.level = 4
+
+        self.assertLess(hard.burst_interval, easy.burst_interval)
+        self.assertGreater(hard.speed, easy.speed)
+
+
+class ZigzagRainTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+        self.rng = np.random.default_rng(20)
+
+    def test_bullets_fall_and_bounce_between_the_walls(self) -> None:
+        pattern = ZigzagRainPattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+
+        for _ in range(int(3.0 / self.config.time_step)):
+            pattern.update(self.config.time_step, 96.0, 96.0)
+            for bullet in pattern.bullets():
+                self.assertGreaterEqual(bullet.x, bullet.radius - 1e-6)
+                self.assertLessEqual(bullet.x, self.config.board_width - bullet.radius + 1e-6)
+
+        bullets = pattern.bullets()
+        self.assertGreater(len(bullets), 0)
+        self.assertTrue(all(bullet.color == "white" for bullet in bullets))
+        self.assertTrue(all(bullet.vy > 0.0 for bullet in bullets))
+
+    def test_bullet_flips_horizontal_velocity_at_the_wall(self) -> None:
+        pattern = ZigzagRainPattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+        pattern._bullets = [
+            Fireball(
+                x=self.config.board_width - 1.0,
+                y=50.0,
+                vx=40.0,
+                vy=60.0,
+                radius=4.0,
+                color="white",
+            )
+        ]
+
+        pattern.update(self.config.time_step, 96.0, 96.0)
+
+        self.assertLess(pattern.bullets()[0].vx, 0.0)
+        self.assertLessEqual(pattern.bullets()[0].x, self.config.board_width - 4.0)
+
+
+class VortexTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.config = EnvConfig()
+        self.rng = np.random.default_rng(21)
+
+    def test_blue_bullets_orbit_at_constant_radius(self) -> None:
+        pattern = VortexPattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+        center_x = self.config.board_width / 2
+        center_y = self.config.board_height / 2
+        start_radii = [
+            hypot(bullet.x - center_x, bullet.y - center_y) for bullet in pattern.bullets()
+        ]
+
+        self.assertTrue(all(bullet.color == "blue" for bullet in pattern.bullets()))
+        for _ in range(int(2.0 / self.config.time_step)):
+            pattern.update(self.config.time_step, 96.0, 96.0)
+        end_radii = [
+            hypot(bullet.x - center_x, bullet.y - center_y) for bullet in pattern.bullets()
+        ]
+
+        for start, end in zip(start_radii, end_radii):
+            self.assertAlmostEqual(start, end, delta=3.0)
+
+    def test_wind_pushes_tangentially_around_the_center(self) -> None:
+        pattern = VortexPattern(self.config)
+        pattern.level = 2
+        pattern.reset(self.rng)
+        soul_x, soul_y = self.config.board_width / 2 + 40.0, self.config.board_height / 2
+
+        push_x, push_y = pattern.external_displacement(
+            self.config.time_step, soul_x, soul_y
+        )
+
+        self.assertAlmostEqual(
+            hypot(push_x, push_y),
+            pattern.wind_speed * self.config.time_step,
+            delta=1e-6,
+        )
+        radius_x, radius_y = soul_x - self.config.board_width / 2, soul_y - self.config.board_height / 2
+        self.assertAlmostEqual(push_x * radius_x + push_y * radius_y, 0.0, delta=1e-6)
+        self.assertGreater(push_y, 0.0)
+
+    def test_center_of_the_board_gets_no_push(self) -> None:
+        pattern = VortexPattern(self.config)
+        pattern.level = 1
+        pattern.reset(self.rng)
+
+        self.assertEqual(
+            pattern.external_displacement(
+                self.config.time_step, self.config.board_width / 2, self.config.board_height / 2
+            ),
+            (0.0, 0.0),
+        )
 
 
 if __name__ == "__main__":
