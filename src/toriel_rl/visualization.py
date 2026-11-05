@@ -3,6 +3,13 @@ from toriel_rl.attacks.fire_helix import FireHelixAttack
 from toriel_rl.attacks.fire_waves import FireWavesAttack
 from toriel_rl.attacks.paw_sweep import PawSweepAttack
 
+BULLET_COLORS = {
+    "white": (255, 255, 255),
+    "blue": (80, 130, 255),
+    "orange": (255, 150, 40),
+    "green": (90, 220, 120),
+}
+
 
 def draw_environment(surface, env, pygame) -> None:
     config = env.config
@@ -67,6 +74,53 @@ def draw_environment(surface, env, pygame) -> None:
     soul_x = int(env.soul.x * scale)
     soul_y = int(env.soul.y * scale)
     radius = max(2, int(env.soul.radius * scale))
+    _draw_soul(surface, soul_x, soul_y, radius, pygame)
+    font = pygame.font.Font(None, 23)
+    label = font.render(
+        f"HP {env.soul.hp}/{config.max_hp}  {env.attack.name}  Spare {env.spare_count}/{config.max_spares}",
+        True,
+        (245, 245, 245),
+    )
+    surface.blit(label, (8, board_height + 5))
+
+
+def draw_sandbox(surface, env, pygame) -> None:
+    config = env.config
+    scale = surface.get_width() / config.board_width
+    board_height = int(config.board_height * scale)
+    surface.fill((12, 14, 20))
+    pygame.draw.rect(surface, (245, 245, 245), (0, 0, surface.get_width(), board_height), 3)
+
+    for bullet in env.pattern.bullets():
+        color = BULLET_COLORS.get(bullet.color, (255, 255, 255))
+        center = (int(bullet.x * scale), int(bullet.y * scale))
+        radius = max(2, int(bullet.radius * scale))
+        pygame.draw.circle(surface, color, center, radius)
+        if bullet.color == "green":
+            pygame.draw.circle(surface, (235, 255, 240), center, max(1, int(radius * 0.45)))
+
+    soul_x = int(env.soul.x * scale)
+    soul_y = int(env.soul.y * scale)
+    radius = max(2, int(env.soul.radius * scale))
+    if not env.iframes_active or int(env.elapsed * 10.0) % 2 == 0:
+        _draw_soul(surface, soul_x, soul_y, radius, pygame)
+
+    font = pygame.font.Font(None, 23)
+    flags = " ".join(
+        flag
+        for flag, active in (("MOV", env.moving), ("IFR", env.iframes_active))
+        if active
+    )
+    label = font.render(
+        f"HP {env.soul.hp}/{config.max_hp}  {env.pattern.name}  "
+        f"bullets {len(env.pattern.bullets())}  {flags}",
+        True,
+        (245, 245, 245),
+    )
+    surface.blit(label, (8, board_height + 5))
+
+
+def _draw_soul(surface, soul_x, soul_y, radius, pygame) -> None:
     pygame.draw.polygon(
         surface,
         (255, 55, 80),
@@ -81,13 +135,6 @@ def draw_environment(surface, env, pygame) -> None:
             (soul_x, soul_y + radius),
         ],
     )
-    font = pygame.font.Font(None, 23)
-    label = font.render(
-        f"HP {env.soul.hp}/{config.max_hp}  {env.attack.name}  Spare {env.spare_count}/{config.max_spares}",
-        True,
-        (245, 245, 245),
-    )
-    surface.blit(label, (8, board_height + 5))
 
 
 def _draw_fireballs(surface, fireballs, scale, pygame) -> None:
