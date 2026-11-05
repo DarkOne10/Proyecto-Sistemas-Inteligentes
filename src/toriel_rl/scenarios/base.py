@@ -11,7 +11,7 @@ class BaseScenario(BasePattern):
     def reset(self, rng) -> None:
         return None
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         return None
 
     def bullets(self) -> list:

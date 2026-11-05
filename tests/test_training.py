@@ -24,6 +24,8 @@ class SandboxTrainingTests(unittest.TestCase):
             self.assertTrue((Path(temporary_directory) / "sandbox_training.csv").exists())
             self.assertGreater(len(rows), 0)
             self.assertIn("return", rows[0])
+            self.assertIn("dodged", rows[0])
+            self.assertIn("wall_hits", rows[0])
             self.assertEqual(rows[0]["mode"], "survival")
 
     def test_evaluation_compares_trained_and_random_policies(self) -> None:

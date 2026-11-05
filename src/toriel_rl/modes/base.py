@@ -6,6 +6,7 @@ from toriel_rl.entities.fireball import Fireball
 from toriel_rl.entities.soul import Soul
 from toriel_rl.rewards import RewardConfig
 
+
 @dataclass(frozen=True)
 class StepContext:
     elapsed: float
@@ -29,6 +30,7 @@ class BaseMode(ABC):
     name = "neutral"
     duration: float | None = None
     default_pattern: str | None = None
+    action_mode: str | None = None
 
     def __init__(self, config: EnvConfig) -> None:
         self.config = config
@@ -52,3 +54,6 @@ class BaseMode(ABC):
 
     def board_size(self, elapsed: float) -> tuple[float, float] | None:
         return None
+
+    def obstacles(self) -> list[tuple[float, float, float, float]]:
+        return []

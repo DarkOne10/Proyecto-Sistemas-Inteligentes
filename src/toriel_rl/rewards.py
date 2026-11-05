@@ -9,3 +9,5 @@ class RewardConfig:
     green: float = 1.0
     clean_completion: float = 5.0
     near_miss: float = 0.1
+    focus_near_miss: float = 0.15
+    objective: float = 20.0

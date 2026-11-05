@@ -38,7 +38,7 @@ class RainPattern(BasePattern):
         self._spawn_acc = 0.0
         self._bullets = []
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         if self._rng is None:
             raise RuntimeError("Call reset() before updating the rain.")
         self._elapsed += dt

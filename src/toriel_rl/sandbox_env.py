@@ -9,10 +9,12 @@ from toriel_rl.bullets.rules import damages
 from toriel_rl.config import EnvConfig
 from toriel_rl.entities.fireball import Fireball
 from toriel_rl.entities.soul import Soul
-from toriel_rl.modes import BaseMode, StepContext, create_mode
+from toriel_rl.modes import BaseMode, StepContext, action_mode_for, create_mode
 from toriel_rl.obs import ObsConfig, build_observation, observation_size
 from toriel_rl.rewards import RewardConfig
 from toriel_rl.scenarios import BaseScenario, create_scenario
+
+DODGE_GAP = 12.0
 
 
 class SoulSandboxEnv(gym.Env):
@@ -30,6 +32,7 @@ class SoulSandboxEnv(gym.Env):
         pattern: str | None = None,
         scenario: str | None = None,
         mode: str | None = None,
+        action_mode: str | None = None,
         level: int = 1,
     ) -> None:
         super().__init__()
@@ -46,7 +49,15 @@ class SoulSandboxEnv(gym.Env):
         self.default_scenario = scenario
         self.default_mode = mode
         self.default_level = level
-        self.action_space = spaces.Discrete(9)
+        resolved_action_mode = action_mode or action_mode_for(mode) or "discrete"
+        if resolved_action_mode not in ("discrete", "focus"):
+            raise ValueError(f"Unsupported action mode: {action_mode}")
+        self.action_mode = resolved_action_mode
+        self.action_space = (
+            spaces.Discrete(9)
+            if self.action_mode == "discrete"
+            else spaces.MultiDiscrete([9, 2])
+        )
         self.observation_space = spaces.Box(
             low=-1.0,
             high=1.0,
@@ -66,8 +77,14 @@ class SoulSandboxEnv(gym.Env):
         self._steps = 0
         self._iframes = 0.0
         self._moving = False
+        self._focus = False
         self._episode_damage = False
         self._greens_total = 0
+        self._dodged = 0
+        self._focus_steps = 0
+        self._wall_hits = 0
+        self._damage_by_color: dict[str, int] = {}
+        self._tracked: dict[int, list] = {}
         self._done = True
         self._surface = None
         self._pygame = None
@@ -80,6 +97,10 @@ class SoulSandboxEnv(gym.Env):
     @property
     def moving(self) -> bool:
         return self._moving
+
+    @property
+    def focus_active(self) -> bool:
+        return self._focus
 
     @property
     def iframes_active(self) -> bool:
@@ -102,6 +123,11 @@ class SoulSandboxEnv(gym.Env):
 
         mode_name = options.get("mode", self.default_mode)
         self.mode = create_mode(mode_name, self.config) if mode_name else BaseMode(self.config)
+        if self.mode.action_mode and self.mode.action_mode != self.action_mode:
+            raise ValueError(
+                f"Mode '{self.mode.name}' requires action_mode={self.mode.action_mode!r}, "
+                f"but this env uses {self.action_mode!r}."
+            )
         self.mode.level = level
         self.mode.reset(self.np_random)
 
@@ -130,32 +156,51 @@ class SoulSandboxEnv(gym.Env):
             hp=initial_hp,
         )
         self.level = level
-        self.obstacles = self.scenario.obstacles() if self.scenario is not None else []
+        self.obstacles = list(self.mode.obstacles())
+        if self.scenario is not None:
+            self.obstacles.extend(self.scenario.obstacles())
         self._elapsed = 0.0
         self._steps = 0
         self._iframes = 0.0
         self._moving = False
+        self._focus = False
         self._episode_damage = False
         self._greens_total = 0
+        self._dodged = 0
+        self._focus_steps = 0
+        self._wall_hits = 0
+        self._damage_by_color = {}
+        self._tracked = {}
         self._done = False
         self.steps_per_episode = ceil(self.mode.duration_seconds / self.config.time_step)
         self._refresh_board()
         return self._get_observation(), self._get_info()
 
-    def step(self, action: int):
+    def step(self, action):
         if self._done:
             raise RuntimeError("Call reset() before stepping a finished episode.")
+        if self.action_mode == "focus":
+            action = np.asarray(action, dtype=np.int64)
         if not self.action_space.contains(action):
             raise ValueError(f"Invalid action: {action}")
 
-        moving = action != 0
+        if self.action_mode == "focus":
+            move_action, focus = (int(part) for part in action)
+        else:
+            move_action, focus = int(action), False
+
+        moving = move_action != 0
+        self._focus = focus
+        if focus:
+            self._focus_steps += 1
+        speed = self.config.soul_speed * (0.5 if focus else 1.0)
         self._refresh_board()
         self.soul.move(
-            int(action), self.config.soul_speed, self.config.time_step, self.board_width, self.board_height
+            move_action, speed, self.config.time_step, self.board_width, self.board_height
         )
-        self.pattern.update(self.config.time_step)
+        self.pattern.update(self.config.time_step, self.soul.x, self.soul.y)
         if self.scenario is not None:
-            self.scenario.update(self.config.time_step)
+            self.scenario.update(self.config.time_step, self.soul.x, self.soul.y)
 
         push_x, push_y = self.pattern.external_displacement(self.config.time_step)
         if self.scenario is not None:
@@ -173,6 +218,7 @@ class SoulSandboxEnv(gym.Env):
         self._moving = moving
         damage, greens, nearest_gap = self._resolve_collisions(moving)
         self._greens_total += greens
+        self._track_dodges()
 
         bullets = self.all_bullets()
         terminated = self.soul.hp <= 0
@@ -252,6 +298,7 @@ class SoulSandboxEnv(gym.Env):
             radius = self.soul.radius
             if distance_sq >= radius * radius:
                 continue
+            self._wall_hits += 1
             if distance_sq > 0.0:
                 distance = sqrt(distance_sq)
                 push = (radius - distance) / distance
@@ -310,16 +357,36 @@ class SoulSandboxEnv(gym.Env):
                 self.soul.hp = min(self.config.max_hp, self.soul.hp + self.config.green_heal)
                 greens += 1
                 continue
-            if not damages(bullet.color, moving, invulnerable):
+            if not damages(bullet.color, moving, invulnerable, self._focus):
                 continue
             damage = min(damage_source.damage, self.soul.hp)
             self.soul.hp -= damage
             self._iframes = self.config.iframe_duration
             invulnerable = True
             self._episode_damage = True
+            self._damage_by_color[bullet.color] = self._damage_by_color.get(bullet.color, 0) + damage
+            tracked = self._tracked.get(id(bullet))
+            if tracked is None:
+                self._tracked[id(bullet)] = [bullet, True]
+            else:
+                tracked[1] = True
             if self.soul.hp == 0:
                 break
         return damage, greens, nearest_gap
+
+    def _track_dodges(self) -> None:
+        bullets = self.all_bullets()
+        for bullet in bullets:
+            if bullet.color == "green":
+                continue
+            gap = hypot(bullet.x - self.soul.x, bullet.y - self.soul.y) - bullet.radius - self.soul.radius
+            if gap < DODGE_GAP:
+                self._tracked.setdefault(id(bullet), [bullet, False])
+        alive = {id(bullet) for bullet in bullets}
+        for key in [key for key in self._tracked if key not in alive]:
+            _, hit = self._tracked.pop(key)
+            if not hit:
+                self._dodged += 1
 
     def _build_context(
         self,
@@ -339,7 +406,7 @@ class SoulSandboxEnv(gym.Env):
             greens_total=self._greens_total,
             nearest_gap=nearest_gap,
             moving=moving,
-            focus=False,
+            focus=self._focus,
             iframes=self._iframes > 0.0,
             whites_only=bool(bullets) and all(bullet.color == "white" for bullet in bullets),
             level=self.level,
@@ -371,7 +438,7 @@ class SoulSandboxEnv(gym.Env):
             phase=self._elapsed / max(self.mode.duration_seconds, 1e-6),
             iframes=self._iframes > 0.0,
             moving=self._moving,
-            focus=False,
+            focus=self._focus,
             config=self.obs_config,
         )
 
@@ -389,5 +456,12 @@ class SoulSandboxEnv(gym.Env):
             "bullets": len(self.all_bullets()),
             "iframes": self._iframes > 0.0,
             "moving": self._moving,
+            "focus": self._focus,
+            "action_mode": self.action_mode,
+            "dodged": self._dodged,
+            "focus_steps": self._focus_steps,
+            "wall_hits": self._wall_hits,
+            "damage_by_color": dict(self._damage_by_color),
+            "objective": getattr(self.mode, "target", None),
             "reason": reason,
         }

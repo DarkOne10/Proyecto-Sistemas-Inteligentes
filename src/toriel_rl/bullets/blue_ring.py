@@ -52,7 +52,7 @@ class BlueRingPattern(BasePattern):
             for index in range(RING_SIZE)
         ]
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         self._elapsed += dt
         cycle = int(self._elapsed / self.contract_duration)
         if cycle != self._cycle:

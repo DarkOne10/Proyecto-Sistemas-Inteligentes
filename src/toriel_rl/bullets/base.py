@@ -21,7 +21,7 @@ class BasePattern(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -44,7 +44,7 @@ class EmptyPattern(BasePattern):
     def reset(self, rng: np.random.Generator) -> None:
         return None
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         return None
 
     def bullets(self) -> list[Fireball]:

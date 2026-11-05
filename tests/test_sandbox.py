@@ -26,7 +26,7 @@ class StaticPattern(BasePattern):
     def reset(self, rng: np.random.Generator) -> None:
         return None
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         return None
 
     def bullets(self) -> list[Fireball]:
@@ -245,6 +245,90 @@ class SoulSandboxEnvTests(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             env.step(0)
+
+
+class FocusActionTests(unittest.TestCase):
+    def test_focus_mode_uses_multidiscrete_and_halves_speed(self) -> None:
+        env = SoulSandboxEnv(mode="focus_precision", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=1, options={"pattern": "empty"})
+
+        self.assertEqual(env.action_mode, "focus")
+        self.assertEqual(env.action_space.nvec.tolist(), [9, 2])
+
+        env.step([4, 0])
+        unfocused_dx = env.soul.x - 96.0
+        env.reset(seed=1, options={"pattern": "empty"})
+        _, _, _, _, info = env.step([4, 1])
+        focused_dx = env.soul.x - 96.0
+
+        self.assertAlmostEqual(focused_dx, unfocused_dx / 2.0)
+        self.assertTrue(info["focus"])
+        self.assertEqual(info["focus_steps"], 1)
+        self.assertEqual(info["action_mode"], "focus")
+
+    def test_focus_protects_against_blue_while_moving(self) -> None:
+        env = SoulSandboxEnv(mode="focus_precision", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=2, options={"pattern": "empty"})
+        env.pattern = StaticPattern(
+            env.config,
+            bullets=[Fireball(x=env.soul.x, y=env.soul.y, vx=0.0, vy=0.0, color="blue")],
+        )
+
+        _, _, _, _, info = env.step([1, 1])
+        self.assertEqual(info["damage"], 0)
+        self.assertEqual(info["hp"], 20)
+
+        env.pattern = StaticPattern(
+            env.config,
+            bullets=[Fireball(x=env.soul.x, y=env.soul.y, vx=0.0, vy=0.0, color="blue")],
+        )
+        _, _, _, _, info = env.step([1, 0])
+        self.assertEqual(info["damage"], 4)
+        self.assertEqual(info["damage_by_color"], {"blue": 4})
+
+    def test_invalid_focus_action_rejected(self) -> None:
+        env = SoulSandboxEnv(mode="focus_precision", config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=3, options={"pattern": "empty"})
+
+        with self.assertRaises(ValueError):
+            env.step([9, 0])
+        with self.assertRaises(ValueError):
+            env.step([1, 2])
+
+
+class EpisodeMetricsTests(unittest.TestCase):
+    def test_dodged_counts_close_bullets_that_leave(self) -> None:
+        env = SoulSandboxEnv(config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=1, options={"pattern": "empty"})
+        env.pattern = StaticPattern(
+            env.config,
+            bullets=[Fireball(x=env.soul.x + 10.0, y=env.soul.y, vx=100.0, vy=0.0)],
+        )
+
+        _, _, _, _, info = env.step(0)
+        self.assertEqual(info["dodged"], 0)
+
+        env.pattern = EmptyPattern(env.config)
+        _, _, _, _, info = env.step(0)
+        self.assertEqual(info["dodged"], 1)
+
+    def test_wall_hits_count_obstacle_contact(self) -> None:
+        env = SoulSandboxEnv(config=EnvConfig(episode_seconds=10.0))
+        env.reset(seed=2, options={"pattern": "empty"})
+        env.obstacles = [(env.soul.x - 5.0, env.soul.y - 5.0, 10.0, 10.0)]
+
+        _, _, _, _, info = env.step(0)
+
+        self.assertGreaterEqual(info["wall_hits"], 1)
+
+    def test_mode_and_scenario_obstacles_concatenate(self) -> None:
+        env = SoulSandboxEnv(mode="collector", scenario="vertical_lanes")
+        env.reset(seed=3)
+
+        self.assertEqual(len(env.obstacles), 2)
+
+    def test_focus_environment_passes_gymnasium_checker(self) -> None:
+        check_env(SoulSandboxEnv(mode="focus_precision"), skip_render_check=True)
 
 
 if __name__ == "__main__":

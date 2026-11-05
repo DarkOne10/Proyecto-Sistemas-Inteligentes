@@ -129,7 +129,11 @@ def draw_sandbox(surface, env, pygame) -> None:
     font = pygame.font.Font(None, 23)
     flags = " ".join(
         flag
-        for flag, active in (("MOV", env.moving), ("IFR", env.iframes_active))
+        for flag, active in (
+            ("MOV", env.moving),
+            ("FOC", env.focus_active),
+            ("IFR", env.iframes_active),
+        )
         if active
     )
     label = font.render(

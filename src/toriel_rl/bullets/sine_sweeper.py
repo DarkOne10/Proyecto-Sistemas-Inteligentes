@@ -46,7 +46,7 @@ class SineSweeperPattern(BasePattern):
             self._base_y.append(base_y)
             self._phase.append(phase)
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         self._elapsed += dt
         amplitude = self.config.board_height * 0.25
         angular_speed = math.tau / 3.0

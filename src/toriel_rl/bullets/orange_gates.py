@@ -66,7 +66,7 @@ class OrangeGatePattern(BasePattern):
                     )
                 y += WALL_SPACING
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         width = self.config.board_width
         rebuilt = False
         for wall in self._walls:

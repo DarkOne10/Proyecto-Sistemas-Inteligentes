@@ -45,7 +45,7 @@ class VerticalLanesScenario(BaseScenario):
         shift = int(self._rng.integers(1, LANE_COUNT))
         self._gap_lane = (self._gap_lane + shift) % LANE_COUNT
 
-    def update(self, dt: float) -> None:
+    def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         if self._rng is None:
             raise RuntimeError("Call reset() before updating the lanes.")
         self._elapsed += dt
