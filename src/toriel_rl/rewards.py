@@ -8,3 +8,4 @@ class RewardConfig:
     death: float = -20.0
     green: float = 1.0
     clean_completion: float = 5.0
+    near_miss: float = 0.1

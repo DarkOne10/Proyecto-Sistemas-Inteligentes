@@ -1,4 +1,4 @@
-from math import ceil, hypot
+from math import ceil, hypot, sqrt
 
 import gymnasium as gym
 import numpy as np
@@ -7,9 +7,12 @@ from gymnasium import spaces
 from toriel_rl.bullets import BasePattern, PATTERN_TYPES, create_pattern
 from toriel_rl.bullets.rules import damages
 from toriel_rl.config import EnvConfig
+from toriel_rl.entities.fireball import Fireball
 from toriel_rl.entities.soul import Soul
+from toriel_rl.modes import BaseMode, StepContext, create_mode
 from toriel_rl.obs import ObsConfig, build_observation, observation_size
 from toriel_rl.rewards import RewardConfig
+from toriel_rl.scenarios import BaseScenario, create_scenario
 
 
 class SoulSandboxEnv(gym.Env):
@@ -24,15 +27,25 @@ class SoulSandboxEnv(gym.Env):
         obs_config: ObsConfig | None = None,
         reward_config: RewardConfig | None = None,
         render_mode: str | None = None,
+        pattern: str | None = None,
+        scenario: str | None = None,
+        mode: str | None = None,
+        level: int = 1,
     ) -> None:
         super().__init__()
         if render_mode not in (None, "human"):
             raise ValueError(f"Unsupported render mode: {render_mode}")
+        if level < 1:
+            raise ValueError("Level must be positive.")
 
         self.config = config or EnvConfig()
         self.obs_config = obs_config or ObsConfig()
         self.reward_config = reward_config or RewardConfig()
         self.render_mode = render_mode
+        self.default_pattern = pattern
+        self.default_scenario = scenario
+        self.default_mode = mode
+        self.default_level = level
         self.action_space = spaces.Discrete(9)
         self.observation_space = spaces.Box(
             low=-1.0,
@@ -43,11 +56,18 @@ class SoulSandboxEnv(gym.Env):
         self.steps_per_episode = ceil(self.config.episode_seconds / self.config.time_step)
         self.soul: Soul
         self.pattern: BasePattern
+        self.scenario: BaseScenario | None = None
+        self.mode: BaseMode = BaseMode(self.config)
+        self.level = level
+        self.board_width = float(self.config.board_width)
+        self.board_height = float(self.config.board_height)
+        self.obstacles: list[tuple[float, float, float, float]] = []
         self._elapsed = 0.0
         self._steps = 0
         self._iframes = 0.0
         self._moving = False
         self._episode_damage = False
+        self._greens_total = 0
         self._done = True
         self._surface = None
         self._pygame = None
@@ -68,7 +88,7 @@ class SoulSandboxEnv(gym.Env):
     def reset(self, *, seed: int | None = None, options: dict | None = None):
         super().reset(seed=seed)
         options = options or {}
-        unsupported_options = set(options) - {"pattern", "hp"}
+        unsupported_options = set(options) - {"pattern", "scenario", "mode", "level", "hp"}
         if unsupported_options:
             raise ValueError(f"Unsupported reset options: {sorted(unsupported_options)}")
 
@@ -76,24 +96,50 @@ class SoulSandboxEnv(gym.Env):
         if not 1 <= initial_hp <= self.config.max_hp:
             raise ValueError("Initial HP must be between 1 and max_hp.")
 
-        pattern_name = options.get("pattern")
+        level = int(options.get("level", self.default_level))
+        if level < 1:
+            raise ValueError("Level must be positive.")
+
+        mode_name = options.get("mode", self.default_mode)
+        self.mode = create_mode(mode_name, self.config) if mode_name else BaseMode(self.config)
+        self.mode.level = level
+        self.mode.reset(self.np_random)
+
+        scenario_name = options.get("scenario", self.default_scenario)
+        self.scenario = create_scenario(scenario_name, self.config) if scenario_name else None
+        if self.scenario is not None:
+            self.scenario.level = level
+            self.scenario.reset(self.np_random)
+
+        pattern_name = options.get("pattern", self.default_pattern)
+        if pattern_name is None and self.scenario is not None:
+            pattern_name = self.scenario.default_pattern
+        if pattern_name is None:
+            pattern_name = self.mode.default_pattern
         if pattern_name is None:
             pattern_name = str(self.np_random.choice(self.available_patterns))
 
         self.pattern = create_pattern(pattern_name, self.config)
+        self.pattern.level = level
         self.pattern.reset(self.np_random)
+
         self.soul = Soul(
             x=self.config.board_width / 2,
             y=self.config.board_height / 2,
             radius=self.config.soul_radius,
             hp=initial_hp,
         )
+        self.level = level
+        self.obstacles = self.scenario.obstacles() if self.scenario is not None else []
         self._elapsed = 0.0
         self._steps = 0
         self._iframes = 0.0
         self._moving = False
         self._episode_damage = False
+        self._greens_total = 0
         self._done = False
+        self.steps_per_episode = ceil(self.mode.duration_seconds / self.config.time_step)
+        self._refresh_board()
         return self._get_observation(), self._get_info()
 
     def step(self, action: int):
@@ -103,31 +149,52 @@ class SoulSandboxEnv(gym.Env):
             raise ValueError(f"Invalid action: {action}")
 
         moving = action != 0
-        width = self.config.board_width
-        height = self.config.board_height
+        self._refresh_board()
         self.soul.move(
-            int(action), self.config.soul_speed, self.config.time_step, width, height
+            int(action), self.config.soul_speed, self.config.time_step, self.board_width, self.board_height
         )
         self.pattern.update(self.config.time_step)
+        if self.scenario is not None:
+            self.scenario.update(self.config.time_step)
+
         push_x, push_y = self.pattern.external_displacement(self.config.time_step)
+        if self.scenario is not None:
+            scenario_x, scenario_y = self.scenario.external_displacement(self.config.time_step)
+            push_x += scenario_x
+            push_y += scenario_y
         if push_x or push_y:
-            self.soul.x = min(max(self.soul.x + push_x, self.soul.radius), width - self.soul.radius)
-            self.soul.y = min(max(self.soul.y + push_y, self.soul.radius), height - self.soul.radius)
+            self.soul.x = min(max(self.soul.x + push_x, self.soul.radius), self.board_width - self.soul.radius)
+            self.soul.y = min(max(self.soul.y + push_y, self.soul.radius), self.board_height - self.soul.radius)
+        self._resolve_obstacles()
 
         self._elapsed += self.config.time_step
         self._steps += 1
         self._iframes = max(0.0, self._iframes - self.config.time_step)
         self._moving = moving
-        damage, greens = self._resolve_collisions(moving)
+        damage, greens, nearest_gap = self._resolve_collisions(moving)
+        self._greens_total += greens
 
+        bullets = self.all_bullets()
         terminated = self.soul.hp <= 0
-        truncated = False
         reason = "death" if terminated else None
-        if not terminated and self._steps >= self.steps_per_episode:
-            truncated = True
-            reason = "time_up"
+        truncated = False
+        completion = None
+        if not terminated:
+            ctx = self._build_context(bullets, damage, greens, nearest_gap, moving, terminated)
+            completion = self.mode.completion_reason(ctx)
+            if completion:
+                truncated = True
+                reason = completion
+            elif self._steps >= self.steps_per_episode:
+                truncated = True
+                reason = "time_up"
 
         reward = self._reward(damage=damage, greens=greens, terminated=terminated, truncated=truncated)
+        if not terminated:
+            reward += self.mode.extra_reward(ctx)
+            if completion:
+                reward += self.mode.completion_bonus(ctx)
+
         self._done = terminated or truncated
         info = self._get_info(damage=damage, greens=greens, reason=reason)
         return self._get_observation(), reward, terminated, truncated, info
@@ -163,32 +230,124 @@ class SoulSandboxEnv(gym.Env):
         self._pygame = None
         self._clock = None
 
-    def _resolve_collisions(self, moving: bool) -> tuple[int, int]:
+    def _refresh_board(self) -> None:
+        size = None
+        if self.mode is not None:
+            size = self.mode.board_size(self._elapsed)
+        if size is None and self.scenario is not None:
+            size = self.scenario.board_size(self._elapsed)
+        if size is None:
+            size = (float(self.config.board_width), float(self.config.board_height))
+        self.board_width, self.board_height = size
+        self.soul.x = min(max(self.soul.x, self.soul.radius), self.board_width - self.soul.radius)
+        self.soul.y = min(max(self.soul.y, self.soul.radius), self.board_height - self.soul.radius)
+
+    def _resolve_obstacles(self) -> None:
+        for ox, oy, ow, oh in self.obstacles:
+            closest_x = min(max(self.soul.x, ox), ox + ow)
+            closest_y = min(max(self.soul.y, oy), oy + oh)
+            dx = self.soul.x - closest_x
+            dy = self.soul.y - closest_y
+            distance_sq = dx * dx + dy * dy
+            radius = self.soul.radius
+            if distance_sq >= radius * radius:
+                continue
+            if distance_sq > 0.0:
+                distance = sqrt(distance_sq)
+                push = (radius - distance) / distance
+                self.soul.x += dx * push
+                self.soul.y += dy * push
+            else:
+                left = self.soul.x - ox
+                right = ox + ow - self.soul.x
+                top = self.soul.y - oy
+                bottom = oy + oh - self.soul.y
+                nearest = min(left, right, top, bottom)
+                if nearest == left:
+                    self.soul.x = ox - radius
+                elif nearest == right:
+                    self.soul.x = ox + ow + radius
+                elif nearest == top:
+                    self.soul.y = oy - radius
+                else:
+                    self.soul.y = oy + oh + radius
+            self.soul.x = min(max(self.soul.x, self.soul.radius), self.board_width - self.soul.radius)
+            self.soul.y = min(max(self.soul.y, self.soul.radius), self.board_height - self.soul.radius)
+
+    def all_bullets(self) -> list[Fireball]:
+        bullets = list(self.pattern.bullets())
+        if self.scenario is not None:
+            bullets.extend(self.scenario.bullets())
+        return bullets
+
+    def _remove_bullet(self, bullet: Fireball) -> None:
+        for owner in (self.pattern, self.scenario):
+            if owner is None:
+                continue
+            try:
+                owner.remove(bullet)
+                return
+            except ValueError:
+                continue
+
+    def _resolve_collisions(self, moving: bool) -> tuple[int, int, float]:
         damage = 0
         greens = 0
+        nearest_gap = float("inf")
         invulnerable = self._iframes > 0.0
-        for bullet in list(self.pattern.bullets()):
+        damage_source = self.pattern
+        if not self.pattern.bullets() and self.scenario is not None:
+            damage_source = self.scenario
+        for bullet in self.all_bullets():
             separation = hypot(bullet.x - self.soul.x, bullet.y - self.soul.y)
-            if separation > bullet.radius + self.soul.radius:
+            gap = separation - bullet.radius - self.soul.radius
+            if bullet.color != "green":
+                nearest_gap = min(nearest_gap, gap)
+            if gap > 0.0:
                 continue
             if bullet.color == "green":
-                self.pattern.remove(bullet)
+                self._remove_bullet(bullet)
                 self.soul.hp = min(self.config.max_hp, self.soul.hp + self.config.green_heal)
                 greens += 1
                 continue
             if not damages(bullet.color, moving, invulnerable):
                 continue
-            damage = min(self.pattern.damage, self.soul.hp)
+            damage = min(damage_source.damage, self.soul.hp)
             self.soul.hp -= damage
             self._iframes = self.config.iframe_duration
             invulnerable = True
             self._episode_damage = True
             if self.soul.hp == 0:
                 break
-        return damage, greens
+        return damage, greens, nearest_gap
+
+    def _build_context(
+        self,
+        bullets: list[Fireball],
+        damage: int,
+        greens: int,
+        nearest_gap: float,
+        moving: bool,
+        terminated: bool,
+    ) -> StepContext:
+        return StepContext(
+            elapsed=self._elapsed,
+            soul=self.soul,
+            bullets=tuple(bullets),
+            damage=damage,
+            greens=greens,
+            greens_total=self._greens_total,
+            nearest_gap=nearest_gap,
+            moving=moving,
+            focus=False,
+            iframes=self._iframes > 0.0,
+            whites_only=bool(bullets) and all(bullet.color == "white" for bullet in bullets),
+            level=self.level,
+            terminated=terminated,
+        )
 
     def _reward(self, *, damage: int, greens: int, terminated: bool, truncated: bool) -> float:
-        rewards = self.reward_config
+        rewards = self.mode.reward_config() or self.reward_config
         reward = 0.0
         if greens:
             reward += rewards.green * greens
@@ -205,11 +364,11 @@ class SoulSandboxEnv(gym.Env):
     def _get_observation(self) -> np.ndarray:
         return build_observation(
             self.soul,
-            self.pattern.bullets(),
-            board_width=self.config.board_width,
-            board_height=self.config.board_height,
+            self.all_bullets(),
+            board_width=self.board_width,
+            board_height=self.board_height,
             max_hp=self.config.max_hp,
-            phase=self._elapsed / max(self.config.episode_seconds, 1e-6),
+            phase=self._elapsed / max(self.mode.duration_seconds, 1e-6),
             iframes=self._iframes > 0.0,
             moving=self._moving,
             focus=False,
@@ -220,10 +379,14 @@ class SoulSandboxEnv(gym.Env):
         return {
             "seed": int(self.np_random_seed),
             "pattern": self.pattern.name,
+            "scenario": self.scenario.name if self.scenario is not None else None,
+            "mode": self.mode.name,
+            "level": self.level,
             "hp": self.soul.hp,
             "damage": damage,
             "greens": greens,
-            "bullets": len(self.pattern.bullets()),
+            "greens_total": self._greens_total,
+            "bullets": len(self.all_bullets()),
             "iframes": self._iframes > 0.0,
             "moving": self._moving,
             "reason": reason,

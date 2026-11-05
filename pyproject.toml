@@ -16,6 +16,7 @@ dependencies = [
 [project.optional-dependencies]
 render = ["pygame-ce>=2.5"]
 test = ["pytest>=8"]
+rl = ["stable-baselines3>=2.3"]
 
 [project.scripts]
 toriel-train = "toriel_rl.training:main"

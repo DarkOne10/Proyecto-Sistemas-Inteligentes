@@ -86,22 +86,43 @@ def draw_environment(surface, env, pygame) -> None:
 
 def draw_sandbox(surface, env, pygame) -> None:
     config = env.config
-    scale = surface.get_width() / config.board_width
-    board_height = int(config.board_height * scale)
+    window_scale = surface.get_width() / config.board_width
+    board_width = int(env.board_width * window_scale)
+    board_height = int(env.board_height * window_scale)
+    offset_x = (surface.get_width() - board_width) // 2
+    offset_y = (surface.get_height() - 32 - board_height) // 2
     surface.fill((12, 14, 20))
-    pygame.draw.rect(surface, (245, 245, 245), (0, 0, surface.get_width(), board_height), 3)
+    pygame.draw.rect(
+        surface, (245, 245, 245), (offset_x, offset_y, board_width, board_height), 3
+    )
 
-    for bullet in env.pattern.bullets():
+    for obstacle in env.obstacles:
+        ox, oy, ow, oh = obstacle
+        pygame.draw.rect(
+            surface,
+            (58, 60, 72),
+            (
+                offset_x + int(ox * window_scale),
+                offset_y + int(oy * window_scale),
+                max(2, int(ow * window_scale)),
+                max(2, int(oh * window_scale)),
+            ),
+        )
+
+    for bullet in env.all_bullets():
         color = BULLET_COLORS.get(bullet.color, (255, 255, 255))
-        center = (int(bullet.x * scale), int(bullet.y * scale))
-        radius = max(2, int(bullet.radius * scale))
+        center = (
+            offset_x + int(bullet.x * window_scale),
+            offset_y + int(bullet.y * window_scale),
+        )
+        radius = max(2, int(bullet.radius * window_scale))
         pygame.draw.circle(surface, color, center, radius)
         if bullet.color == "green":
             pygame.draw.circle(surface, (235, 255, 240), center, max(1, int(radius * 0.45)))
 
-    soul_x = int(env.soul.x * scale)
-    soul_y = int(env.soul.y * scale)
-    radius = max(2, int(env.soul.radius * scale))
+    soul_x = offset_x + int(env.soul.x * window_scale)
+    soul_y = offset_y + int(env.soul.y * window_scale)
+    radius = max(2, int(env.soul.radius * window_scale))
     if not env.iframes_active or int(env.elapsed * 10.0) % 2 == 0:
         _draw_soul(surface, soul_x, soul_y, radius, pygame)
 
@@ -113,11 +134,11 @@ def draw_sandbox(surface, env, pygame) -> None:
     )
     label = font.render(
         f"HP {env.soul.hp}/{config.max_hp}  {env.pattern.name}  "
-        f"bullets {len(env.pattern.bullets())}  {flags}",
+        f"bullets {len(env.all_bullets())}  {flags}",
         True,
         (245, 245, 245),
     )
-    surface.blit(label, (8, board_height + 5))
+    surface.blit(label, (8, offset_y + board_height + 5))
 
 
 def _draw_soul(surface, soul_x, soul_y, radius, pygame) -> None:

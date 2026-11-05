@@ -11,6 +11,7 @@ class BasePattern(ABC):
 
     name: str
     damage: int = 4
+    level: int = 1
 
     def __init__(self, config: EnvConfig) -> None:
         self.config = config
