@@ -87,7 +87,7 @@ def train_agent(
         return EpisodeRecorder(SoulSandboxEnv(config=config, **env_kwargs), rows)
 
     vec_env = make_vec_env(factory, n_envs=n_envs, seed=seed)
-    model = _make_model(algo, vec_env, seed)
+    model = make_model(algo, vec_env, seed)
     model.learn(total_timesteps=timesteps, progress_bar=False)
     model_path = output_path / f"sandbox_{algo}.zip"
     model.save(model_path)
@@ -97,7 +97,7 @@ def train_agent(
     return model_path, rows
 
 
-def _make_model(algo: str, vec_env, seed: int):
+def make_model(algo: str, vec_env, seed: int):
     from gymnasium import spaces
     from stable_baselines3 import PPO
 
@@ -112,7 +112,7 @@ def _make_model(algo: str, vec_env, seed: int):
     raise ValueError(f"Unknown algorithm: {algo}")
 
 
-def _load_model(algo: str, model_path: str | Path):
+def load_model(algo: str, model_path: str | Path):
     if algo == "sac":
         from stable_baselines3 import SAC
 
@@ -132,7 +132,15 @@ def evaluate(
     if episodes <= 0:
         raise ValueError("Episodes must be positive.")
 
-    model = _load_model(algo, model_path)
+    model = load_model(algo, model_path)
+    return evaluate_model(model, episodes, seed, **env_kwargs)
+
+
+def evaluate_model(model, episodes: int, seed: int, **env_kwargs) -> dict:
+    """Roll out an in-memory SB3 model for a few seeded episodes."""
+    if episodes <= 0:
+        raise ValueError("Episodes must be positive.")
+
     env = SoulSandboxEnv(**env_kwargs)
     returns = []
     hps = []

@@ -51,3 +51,76 @@
 - Entrenamiento: `--algo ppo|sac`; SAC exige `action_mode="continuous"` (el CLI lo activa automáticamente), modelo `sandbox_{algo}.zip`, `--curriculum` queda como PPO-only (guard en CLI).
 - CLI demo con nuevo `--action-mode`.
 - Verificación: 120/120 tests (incluye `check_env` del entorno continuo y smoke de SAC); demos de los 5 patrones, 2 modos, 3 escenarios y acción continua; SAC end-to-end (entrena → evalúa → guarda `sandbox_sac.zip`) y guard `--curriculum --algo sac`.
+
+## S4 — Benchmark, vitrina (showcase) y arena en vivo
+
+**Tests:** 140/140
+
+- Benchmark (`sandbox_benchmark`): 6 tareas (`survival_rain`, `endurance`, `mixup`,
+  `spiral_evasion`, `collapsing_arena`, `slalom_focus`) × PPO/SAC con evaluación periódica
+  contra la línea base aleatoria; escribe `results/benchmark/benchmark_curves.csv`
+  (retorno medio, HP medio y tasa de finalización por punto) y, con `--plot`,
+  la gráfica `benchmark_curves.png` (extra `benchmark` → matplotlib).
+  SAC corre siempre en acción continua y se salta las tareas que exigen foco
+  (`_run_kwargs` devuelve `None`); el eje X registra `model.num_timesteps` real.
+  Corrección tras verificarla empíricamente: `learn(..., reset_num_timesteps=False)`
+  **suma** pasos, así que ahora se le pasa el tramo restante
+  (`min(eval_every, timesteps - num_timesteps)`) en vez del objetivo acumulado —
+  antes cada corrida disparaba por encima de lo pedido (10 240 pedidos → 14 336 reales).
+- `sandbox_training`: `evaluate` se divide en `evaluate` + `evaluate_model` y
+  `_make_model`/`_load_model` pasan a públicos (`make_model`, `load_model`) para que
+  la vitrina y la arena reutilicen la carga de modelos.
+- Vitrina (`python -m toriel_rl.showcase`): recorre las **24 escenas en orden fijo** —
+  los 3 ataques originales de Toriel (`fire_helix`, `fire_waves`, `paw_sweep`),
+  los 15 patrones (sin `empty`, en orden de registro) y los 6 escenarios —
+  con `--seconds` (15) de acción por escena y una tarjeta de título de
+  `--title-seconds` (2) antes de empezar, que muestra familia, nombre
+  (p. ej. `A3 Blue Collapsing Ring`) y regla de color (p. ej. `Blue: stay still to survive`).
+  Política aleatoria por defecto; `--model` acepta `.json` (tabla Q → ataques de Toriel)
+  o `.zip` de PPO/SAC (modelo → escenas del sandbox) y usa la aleatoria como respaldo
+  donde el modelo no encaja; `--loop` reinicia tras la última escena, `--seed` la hace
+  reproducible y cerrar la ventana detiene el recorrido sin perder lo mostrado.
+- Arena (`python -m toriel_rl.arena`): escena aleatoria por episodio (con las 24 escenas
+  en el sorteo) hasta cerrar la ventana, con `--episodes N` para limitarla y `--random`
+  para forzar la política aleatoria. La barra inferior (`draw_arena_hud`) muestra nombre
+  de escena, recompensa del episodio, barra de HP e indicador `IFR`.
+  Un episodio temprano reinicia la misma escena en la vitrina (preserva el tiempo por escena)
+  y en la arena termina y sigue con la siguiente escena.
+- Ambos comandos comparten el registro de escenas, las políticas y los overlays en
+  `showcase.py` (`Scene`, `build_scenes`, `load_policies`, `detect_algo`, `draw_title_card`,
+  `draw_arena_hud`); `arena.py` solo aporta el bucle de episodios aleatorios y su CLI.
+  El algoritmo del zip se detecta sin cargarlo (clave `policy_class` serializada) y el
+  modo de acción (discreto/foco/continuo) se deriva del `action_space` del modelo.
+- Verificación: 140/140 tests (`test_showcase.py`, 15 nuevos, también en verde con pytest);
+  demos headless de los 4 caminos — `showcase`, `showcase --model q_table.json`,
+  `showcase --model sandbox_ppo.zip`, `arena --random`, `arena --model sandbox_sac.zip`
+  y `arena --model q_table.json`; benchmark de control con el fix
+  (puntos exactos en 2048 y 4096 para `--timesteps 4096`).
+
+### Resultados del benchmark
+
+Corrida completa `--timesteps 10240 --eval-every 2048 --eval-episodes 3 --seed 7 --plot`:
+61 filas en `benchmark_curves.csv` (6 corridas × 5 puntos de evaluación + 6 líneas base
+aleatorias; SAC se salta `slalom_focus`), 11 zips por tarea y la gráfica `benchmark_curves.png`.
+
+| Tarea | Base aleatoria | PPO mejor punto | SAC mejor punto | Ganador |
+|---|---|---|---|---|
+| `collapsing_arena` | −52.0 | −9.9 @4096 | **+20.2 @10240** | SAC |
+| `endurance` | −56.5 | −30.2 @8192 | **+8.3 @10240** | SAC |
+| `mixup` | −62.9 | −19.7 @2048 | **+9.7 @2048** | SAC |
+| `slalom_focus` | −53.2 | **+59.8 @8192** | omitido (exige foco) | PPO |
+| `spiral_evasion` | −61.6 | −49.4 @4096 | **−37.9 @6144** | SAC |
+| `survival_rain` | −52.0 | −12.7 @8192 | **+20.4 @6144** | SAC |
+
+- **SAC gana 5 de 6 tareas** y PPO se lleva `slalom_focus` (la única que exige
+  acción de foco, que SAC no puede representar). En sus mejores puntos ambos
+  superan siempre a la línea base aleatoria.
+- SAC es el único que cruza a retorno positivo en `endurance`, `mixup`,
+  `survival_rain` y `collapsing_arena` (100 % de finalización en esas cuatro);
+  PPO solo en `slalom_focus` (+59.8, 100 % de finalización).
+- `spiral_evasion` es la tarea más difícil: ambos algoritmos se quedan en
+  negativo (mejor SAC −37.9 vs base −61.6), consistente con su clasificación
+  como escenario de evasión exigente.
+- Curvas no monótonas (p. ej. PPO en `collapsing_arena` pickea a 4096 y cae):
+  3 episodios de evaluación por punto ⇒ alta varianza de muestreo; la tendencia
+  general es de mejora respecto a la base.

@@ -66,6 +66,78 @@ python -m toriel_rl.main --model results/q_table.json --attack fire_waves --atta
 El modelo guardado usa el formato de observación vigente; vuelve a entrenar si
 el programa avisa que una tabla Q antigua es incompatible.
 
+## Sandbox Red SOUL (Proyecto Sistemas Inteligentes)
+
+Entorno paralelo `SoulSandboxEnv` (módulos `toriel_rl.sandbox_*`): esquivar balas
+codificadas por color dentro de un Bullet Board neutral, sin jefes, historia ni
+cambios de color de SOUL. Las pruebas originales de Toriel no se modifican.
+
+Reglas de color: el blanco daña siempre, el azul solo si te mueves sin foco, el
+naranja solo si estás quieto y el verde cura; las iFrames evitan daño múltiple.
+El flag de movimiento deriva solo de la entrada del agente (el empuje externo de
+`external_displacement` —p. ej. el `vortex`— no cuenta como movimiento).
+
+Componentes auto-contenidos que se mezclan libremente:
+
+- **Patrones (16):** `sine_sweeper`, `blue_ring`, `orange_gates`, `rain`,
+  `homing_sine`, `dart_volley`, `spiral_barrage`, `drifter`, `pickups`,
+  `blue_rain`, `cross_fire`, `ricochet`, `aimed_burst`, `zigzag_rain`,
+  `vortex` y `empty`.
+- **Modos (5):** `survival` (supervivencia con near-miss), `collector` (cuota de
+  pickups verdes), `focus_precision` (tablero pulsante + recompensa de near-miss
+  enfocado), `endurance` (45 s con nivel que escala cada 10 s) y `mixup`
+  (ruletea patrón y nivel en cada episodio).
+- **Escenarios (6):** `vertical_lanes`, `spiral_evasion`, `slalom_switching`,
+  `pinball`, `narrow_corridor` y `collapsing_arena` (el tablero se encoge).
+- **Acciones:** `discrete` (9 direcciones), `focus` (`MultiDiscrete([9, 2])`,
+  movimiento + foco a media velocidad) y `continuous` (`Box(-1, 1, (2,))` con
+  zona muerta 0.1 y normalización al disco unitario).
+
+Comandos (en Windows: `.\.venv\Scripts\python.exe -m ...`):
+
+```bash
+# demo con política aleatoria
+python -m toriel_rl.sandbox_main --seed 7 --mode endurance --pattern cross_fire
+python -m toriel_rl.sandbox_main --action-mode continuous --scenario pinball
+
+# entrenar PPO/SAC y comparar contra la política aleatoria
+python -m toriel_rl.sandbox_training --timesteps 20000 --mode survival --algo ppo
+python -m toriel_rl.sandbox_training --timesteps 10000 --algo sac --pattern drifter
+
+# currículo de 5 etapas (solo PPO)
+python -m toriel_rl.sandbox_training --curriculum
+
+# benchmark: curvas de aprendizaje tarea × algoritmo (CSV + PNG opcional)
+python -m toriel_rl.sandbox_benchmark --plot
+
+# vitrina: todas las escenas en orden con tarjeta de título (nombre + regla de color)
+python -m toriel_rl.showcase
+python -m toriel_rl.showcase --model results/q_table.json
+
+# arena en vivo: escena aleatoria por episodio, hasta cerrar la ventana
+python -m toriel_rl.arena --model results/sandbox_ppo.zip
+python -m toriel_rl.arena --random
+```
+
+La vitrina (`showcase`) recorre las 24 escenas —los 3 ataques originales de
+Toriel, los 15 patrones y los 6 escenarios— con una tarjeta de título de 2 s y
+`--seconds` (15) de acción por escena; `--model` acepta un `.json` (tabla Q,
+ataques de Toriel) o un `.zip` de PPO/SAC (sandbox) y usa la política aleatoria
+en las escenas que el modelo no cubre. La arena (`arena`) elige una escena
+aleatoria por episodio y muestra en la barra inferior el nombre de la escena,
+la recompensa del episodio, la barra de HP y el indicador `IFR`; corre hasta
+cerrar la ventana (`--episodes N` la limita y `--random` fuerza la política
+aleatoria). El algoritmo y el modo de acción del zip se detectan solos
+(`--algo` permite forzarlos), `--loop` repite la vitrina y `--seed` la hace
+reproducible.
+
+El benchmark escribe `results/benchmark/benchmark_curves.csv` con el retorno
+medio, HP medio y tasa de finalización de cada punto (más la línea base
+aleatoria) y, con `--plot`, la gráfica `benchmark_curves.png`; la gráfica
+requiere `pip install -e ".[benchmark]"`. SAC siempre corre en acción
+continua y se salta las tareas que exigen foco. El registro de cada sprint
+está en [SPRINTS.md](SPRINTS.md).
+
 ## Pruebas
 
 ```bash
