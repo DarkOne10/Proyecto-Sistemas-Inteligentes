@@ -166,3 +166,28 @@ También puedes cambiar `paw_sweep` por `fire_helix`, `fire_waves` o `faltering`
 ```
 
 El resultado esperado al final es `OK`. Si cambias la observación del entorno y el modelo informa que su formato es antiguo, vuelve a entrenar para crear una tabla Q compatible.
+
+## 8. Vitrina y arena en vivo
+
+```powershell
+# vitrina: las 24 escenas en orden (3 ataques de Toriel, 15 patrones, 6 escenarios)
+# con tarjeta de título de 2 s y 15 s de acción por escena; política aleatoria
+.\.venv\Scripts\python.exe -m toriel_rl.showcase
+
+# la misma vitrina con un modelo entrenado
+.\.venv\Scripts\python.exe -m toriel_rl.showcase --model results/q_table.json
+.\.venv\Scripts\python.exe -m toriel_rl.showcase --model results/sandbox_ppo.zip
+
+# arena en vivo: escena aleatoria por episodio, hasta cerrar la ventana
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model results/sandbox_ppo.zip
+.\.venv\Scripts\python.exe -m toriel_rl.arena --random
+```
+
+- Cada escena empieza con una tarjeta: nombre (p. ej. `A3 Blue Collapsing Ring`)
+  y regla de color (p. ej. `Blue: stay still to survive`).
+- La barra inferior muestra el nombre de la escena, la recompensa del episodio,
+  la barra de HP y el indicador `IFR` de iFrames.
+- Un `.json` aplica la tabla Q a los ataques de Toriel y un `.zip` de PPO/SAC al
+  sandbox; en las escenas que el modelo no cubre se usa la política aleatoria.
+- `--seconds` (15) y `--title-seconds` (2 en vitrina, 1 en arena) ajustan las
+  duraciones, `--loop` repite la vitrina y `--episodes N` limita la arena.

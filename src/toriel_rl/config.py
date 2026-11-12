@@ -12,6 +12,8 @@ class EnvConfig:
     time_step: float = 1.0 / 30.0
     episode_seconds: float = 4.0
     damage_cooldown: float = 0.5
+    iframe_duration: float = 0.6
+    green_heal: int = 1
     corridor_width_min: float = 48.0
     corridor_width_max: float = 72.0
     faltering_ball_count: int = 8
@@ -30,6 +32,10 @@ class EnvConfig:
             raise ValueError("Episode duration and time step must be positive.")
         if self.damage_cooldown < 0:
             raise ValueError("Damage cooldown cannot be negative.")
+        if self.iframe_duration < 0:
+            raise ValueError("Iframe duration cannot be negative.")
+        if self.green_heal <= 0:
+            raise ValueError("Green heal amount must be positive.")
         if not 0 < self.corridor_width_min <= self.corridor_width_max:
             raise ValueError("Corridor width range is invalid.")
         if self.corridor_width_max > self.board_width - 2 * self.soul_radius:
