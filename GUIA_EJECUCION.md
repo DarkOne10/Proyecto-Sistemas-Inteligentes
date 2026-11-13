@@ -94,7 +94,7 @@ py -m venv .venv
 4. Instala el proyecto y sus dependencias usando directamente Python del entorno virtual:
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install -e ".[render,test]"
+.\.venv\Scripts\python.exe -m pip install -e ".[render,rl,test]"
 ```
 
 No es obligatorio activar `.venv`. Si PowerShell bloquea `Activate.ps1` por la política de ejecución, puedes continuar con el comando anterior y anteponer `\.venv\Scripts\python.exe` a cada comando Python, como en los ejemplos siguientes. No hace falta cambiar la política del sistema.
@@ -170,8 +170,10 @@ El resultado esperado al final es `OK`. Si cambias la observación del entorno y
 ## 8. Vitrina y arena en vivo
 
 El repositorio incluye cinco modelos PPO/SAC, cada uno especializado en una
-tarea. `slalom_focus` es el modelo recomendado para la demo de slalom; no hay un
-modelo que sea el mejor para todas las escenas. Puedes medirlo en su tarea con:
+tarea. Según la evaluación visual, `mixup` es el modelo recomendado para mostrar
+el proyecto; no hay un modelo que sea el mejor para todas las escenas.
+`slalom_focus` sigue siendo el especializado en slalom. Puedes medirlo en su
+tarea con:
 
 | Modelo | Algoritmo | Tarea | Le irá mejor en episodios de... |
 |---|---|---|---|
@@ -190,14 +192,20 @@ modelo que sea el mejor para todas las escenas. Puedes medirlo en su tarea con:
 # con tarjeta de título de 2 s y 15 s de acción por escena; política aleatoria
 .\.venv\Scripts\python.exe -m toriel_rl.showcase
 
-# la misma vitrina con la tabla Q o el modelo PPO incluido
+# la vitrina con el modelo recomendado para mostrar
+.\.venv\Scripts\python.exe -m toriel_rl.showcase --model models/mixup/sandbox_sac.zip
+
+# la vitrina con la tabla Q para los ataques originales de Toriel
 .\.venv\Scripts\python.exe -m toriel_rl.showcase --model results/q_table.json
-.\.venv\Scripts\python.exe -m toriel_rl.showcase --model models/slalom_focus/sandbox_ppo.zip
 
 # arena en vivo: escena aleatoria por episodio, hasta cerrar la ventana
-.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/slalom_focus/sandbox_ppo.zip
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/mixup/sandbox_sac.zip
 .\.venv\Scripts\python.exe -m toriel_rl.arena --random
 ```
+
+`showcase --model ...mixup...` recorre las escenas en orden y termina al llegar
+al final; añade `--loop` para repetir. `arena --model ...mixup...` escoge
+escenas aleatorias, una por episodio, hasta cerrar la ventana.
 
 Para probar los otros modelos, ejecuta **una sola línea cada vez**, desde la
 carpeta raíz del proyecto:

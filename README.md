@@ -15,7 +15,7 @@ dependencias. Desde la carpeta del proyecto:
 
 ```powershell
 py -m venv .venv
- .\.venv\Scripts\python.exe -m pip install -e ".[render,test]"
+ .\.venv\Scripts\python.exe -m pip install -e ".[render,rl,test]"
 ```
 
 En Windows no es necesario activar el entorno virtual. En macOS o Linux:
@@ -23,7 +23,7 @@ En Windows no es necesario activar el entorno virtual. En macOS o Linux:
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install -e ".[render,test]"
+python -m pip install -e ".[render,rl,test]"
 ```
 
 Los comandos de ejecución para Windows están en [GUIA_EJECUCION.md](GUIA_EJECUCION.md).
@@ -113,12 +113,15 @@ python -m toriel_rl.sandbox_training --eval-only models/slalom_focus/sandbox_ppo
 # benchmark: curvas de aprendizaje tarea × algoritmo (CSV + PNG opcional)
 python -m toriel_rl.sandbox_benchmark --plot
 
-# vitrina: todas las escenas en orden con tarjeta de título (nombre + regla de color)
+# vitrina: 24 escenas en orden, con política aleatoria
 python -m toriel_rl.showcase
+# vitrina con el modelo recomendado para mostrar
+python -m toriel_rl.showcase --model models/mixup/sandbox_sac.zip
+# ataques originales de Toriel con la tabla Q
 python -m toriel_rl.showcase --model results/q_table.json
 
-# arena en vivo: escena aleatoria por episodio, hasta cerrar la ventana
-python -m toriel_rl.arena --model models/slalom_focus/sandbox_ppo.zip
+# arena en vivo: escenas aleatorias por episodio hasta cerrar la ventana
+python -m toriel_rl.arena --model models/mixup/sandbox_sac.zip
 python -m toriel_rl.arena --random
 ```
 
@@ -129,7 +132,9 @@ El repositorio incluye cinco modelos PPO/SAC especializados:
 `models/mixup/sandbox_sac.zip` (`mixup`) y
 `models/collapsing_arena/sandbox_sac.zip` (`survival`/`collapsing_arena`).
 Cada modelo se especializa en su tarea; no hay uno general para todas las
-escenas. `slalom_focus` es una opción recomendada para la demo de slalom.
+escenas. Según la evaluación visual, `mixup` es el modelo recomendado para
+mostrar el proyecto; `slalom_focus` sigue siendo la opción especializada para
+el escenario `slalom_switching`.
 
 La vitrina (`showcase`) recorre las 24 escenas —los 3 ataques originales de
 Toriel, los 15 patrones y los 6 escenarios— con una tarjeta de título de 2 s y
@@ -142,6 +147,21 @@ cerrar la ventana (`--episodes N` la limita y `--random` fuerza la política
 aleatoria). El algoritmo y el modo de acción del zip se detectan solos
 (`--algo` permite forzarlos), `--loop` repite la vitrina y `--seed` la hace
 reproducible.
+
+Para mostrar las 24 escenas con el modelo `mixup`, ejecuta
+`python -m toriel_rl.showcase --model models/mixup/sandbox_sac.zip`. A diferencia
+de `arena`, que sortea una escena nueva por episodio, `showcase` las presenta
+en orden y termina al final (o vuelve a empezar con `--loop`).
+
+En Windows, desde PowerShell y la carpeta raíz del proyecto:
+
+```powershell
+# Recorre las 24 escenas en orden y termina al llegar al final
+.\.venv\Scripts\python.exe -m toriel_rl.showcase --model models\mixup\sandbox_sac.zip
+
+# Elige una escena aleatoria por episodio y continúa hasta cerrar la ventana
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models\mixup\sandbox_sac.zip
+```
 
 El benchmark escribe `results/benchmark/benchmark_curves.csv` con el retorno
 medio, HP medio y tasa de finalización de cada punto (más la línea base
