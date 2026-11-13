@@ -122,9 +122,14 @@ python -m toriel_rl.arena --model models/slalom_focus/sandbox_ppo.zip
 python -m toriel_rl.arena --random
 ```
 
-El repositorio incluye `models/slalom_focus/sandbox_ppo.zip`, un modelo PPO
-entrenado para `focus_precision` en el escenario `slalom_switching` (nivel 3).
-Es una política especializada, no un modelo general para todos los patrones.
+El repositorio incluye cinco modelos PPO/SAC especializados:
+`models/slalom_focus/sandbox_ppo.zip` (`focus_precision`/`slalom_switching`),
+`models/survival_rain/sandbox_ppo.zip` (`survival`/`rain`),
+`models/endurance/sandbox_sac.zip` (`endurance`),
+`models/mixup/sandbox_sac.zip` (`mixup`) y
+`models/collapsing_arena/sandbox_sac.zip` (`survival`/`collapsing_arena`).
+Cada modelo se especializa en su tarea; no hay uno general para todas las
+escenas. `slalom_focus` es una opción recomendada para la demo de slalom.
 
 La vitrina (`showcase`) recorre las 24 escenas —los 3 ataques originales de
 Toriel, los 15 patrones y los 6 escenarios— con una tarjeta de título de 2 s y

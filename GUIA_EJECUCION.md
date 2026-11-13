@@ -169,10 +169,17 @@ El resultado esperado al final es `OK`. Si cambias la observación del entorno y
 
 ## 8. Vitrina y arena en vivo
 
-El repositorio incluye `models/slalom_focus/sandbox_ppo.zip`, un modelo PPO
-especializado en el modo `focus_precision`, escenario `slalom_switching`, nivel
-3. No es un modelo general para todos los patrones. Puedes medirlo en esa tarea
-con:
+El repositorio incluye cinco modelos PPO/SAC, cada uno especializado en una
+tarea. `slalom_focus` es el modelo recomendado para la demo de slalom; no hay un
+modelo que sea el mejor para todas las escenas. Puedes medirlo en su tarea con:
+
+| Modelo | Algoritmo | Tarea |
+|---|---|---|
+| `slalom_focus` | PPO | Esquivar el slalom usando foco: alternar entre moverse y quedarse quieto según el color. |
+| `survival_rain` | PPO | Sobrevivir a una lluvia de proyectiles. |
+| `endurance` | SAC | Sobrevivir durante una partida larga mientras aumenta la dificultad. |
+| `mixup` | SAC | Adaptarse a patrones y niveles que cambian entre episodios. |
+| `collapsing_arena` | SAC | Esquivar mientras el área de juego se encoge. |
 
 ```powershell
 .\.venv\Scripts\python.exe -m toriel_rl.sandbox_training --eval-only models/slalom_focus/sandbox_ppo.zip --mode focus_precision --scenario slalom_switching --level 3 --eval-episodes 50 --seed 10000
@@ -191,6 +198,21 @@ con:
 .\.venv\Scripts\python.exe -m toriel_rl.arena --model models/slalom_focus/sandbox_ppo.zip
 .\.venv\Scripts\python.exe -m toriel_rl.arena --random
 ```
+
+Para probar los otros modelos, ejecuta **una sola línea cada vez**, desde la
+carpeta raíz del proyecto:
+
+```powershell
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/survival_rain/sandbox_ppo.zip
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/endurance/sandbox_sac.zip
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/mixup/sandbox_sac.zip
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/collapsing_arena/sandbox_sac.zip
+```
+
+Estos comandos ejecutan los modelos, no los entrenan. No es necesario probarlos
+todos. Cada modelo aprende una tarea distinta; como la arena elige escenas al
+azar, puede usar una política aleatoria de respaldo en escenas que el modelo no
+cubre.
 
 - Cada escena empieza con una tarjeta: nombre (p. ej. `A3 Blue Collapsing Ring`)
   y regla de color (p. ej. `Blue: stay still to survive`).
