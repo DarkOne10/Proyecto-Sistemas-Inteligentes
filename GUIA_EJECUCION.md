@@ -169,17 +169,26 @@ El resultado esperado al final es `OK`. Si cambias la observación del entorno y
 
 ## 8. Vitrina y arena en vivo
 
+El repositorio incluye `models/slalom_focus/sandbox_ppo.zip`, un modelo PPO
+especializado en el modo `focus_precision`, escenario `slalom_switching`, nivel
+3. No es un modelo general para todos los patrones. Puedes medirlo en esa tarea
+con:
+
+```powershell
+.\.venv\Scripts\python.exe -m toriel_rl.sandbox_training --eval-only models/slalom_focus/sandbox_ppo.zip --mode focus_precision --scenario slalom_switching --level 3 --eval-episodes 50 --seed 10000
+```
+
 ```powershell
 # vitrina: las 24 escenas en orden (3 ataques de Toriel, 15 patrones, 6 escenarios)
 # con tarjeta de título de 2 s y 15 s de acción por escena; política aleatoria
 .\.venv\Scripts\python.exe -m toriel_rl.showcase
 
-# la misma vitrina con un modelo entrenado
+# la misma vitrina con la tabla Q o el modelo PPO incluido
 .\.venv\Scripts\python.exe -m toriel_rl.showcase --model results/q_table.json
-.\.venv\Scripts\python.exe -m toriel_rl.showcase --model results/sandbox_ppo.zip
+.\.venv\Scripts\python.exe -m toriel_rl.showcase --model models/slalom_focus/sandbox_ppo.zip
 
 # arena en vivo: escena aleatoria por episodio, hasta cerrar la ventana
-.\.venv\Scripts\python.exe -m toriel_rl.arena --model results/sandbox_ppo.zip
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/slalom_focus/sandbox_ppo.zip
 .\.venv\Scripts\python.exe -m toriel_rl.arena --random
 ```
 

@@ -107,6 +107,9 @@ python -m toriel_rl.sandbox_training --timesteps 10000 --algo sac --pattern drif
 # currículo de 5 etapas (solo PPO)
 python -m toriel_rl.sandbox_training --curriculum
 
+# evaluar el modelo PPO incluido (especializado en slalom_switching)
+python -m toriel_rl.sandbox_training --eval-only models/slalom_focus/sandbox_ppo.zip --mode focus_precision --scenario slalom_switching --level 3 --eval-episodes 50
+
 # benchmark: curvas de aprendizaje tarea × algoritmo (CSV + PNG opcional)
 python -m toriel_rl.sandbox_benchmark --plot
 
@@ -115,9 +118,13 @@ python -m toriel_rl.showcase
 python -m toriel_rl.showcase --model results/q_table.json
 
 # arena en vivo: escena aleatoria por episodio, hasta cerrar la ventana
-python -m toriel_rl.arena --model results/sandbox_ppo.zip
+python -m toriel_rl.arena --model models/slalom_focus/sandbox_ppo.zip
 python -m toriel_rl.arena --random
 ```
+
+El repositorio incluye `models/slalom_focus/sandbox_ppo.zip`, un modelo PPO
+entrenado para `focus_precision` en el escenario `slalom_switching` (nivel 3).
+Es una política especializada, no un modelo general para todos los patrones.
 
 La vitrina (`showcase`) recorre las 24 escenas —los 3 ataques originales de
 Toriel, los 15 patrones y los 6 escenarios— con una tarjeta de título de 2 s y
