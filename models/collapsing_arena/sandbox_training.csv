@@ -1,0 +1,14 @@
+episode,length,return,hp,pattern,scenario,mode,level,greens,dodged,focus_steps,wall_hits,damage_colors,reason
+1,483,-52.46,0,rain,collapsing_arena,survival,1,0,4,0,0,white:20,death
+2,727,-46.18,0,rain,collapsing_arena,survival,1,0,4,0,0,white:20,death
+3,807,-43.28,0,rain,collapsing_arena,survival,1,0,7,0,0,white:20,death
+4,900,-14.1,4,rain,collapsing_arena,survival,1,0,9,0,0,white:16,time_up
+5,478,-54.26,0,rain,collapsing_arena,survival,1,0,1,0,0,white:20,death
+6,613,-51.06,0,rain,collapsing_arena,survival,1,0,4,0,0,white:20,death
+7,692,-47.28,0,rain,collapsing_arena,survival,1,0,3,0,0,white:20,death
+8,641,-50.7,0,rain,collapsing_arena,survival,1,0,5,0,0,white:20,death
+9,900,-10.7,4,rain,collapsing_arena,survival,1,0,10,0,0,white:16,time_up
+10,900,-2.7,8,rain,collapsing_arena,survival,1,0,5,0,0,white:12,time_up
+11,897,-41.98,0,rain,collapsing_arena,survival,1,0,5,0,0,white:20,death
+12,900,-1.6,8,rain,collapsing_arena,survival,1,0,6,0,0,white:12,time_up
+13,704,-48.54,0,rain,collapsing_arena,survival,1,0,2,0,0,white:20,death
