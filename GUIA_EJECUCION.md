@@ -173,13 +173,13 @@ El repositorio incluye cinco modelos PPO/SAC, cada uno especializado en una
 tarea. `slalom_focus` es el modelo recomendado para la demo de slalom; no hay un
 modelo que sea el mejor para todas las escenas. Puedes medirlo en su tarea con:
 
-| Modelo | Algoritmo | Tarea |
-|---|---|---|
-| `slalom_focus` | PPO | Esquivar el slalom usando foco: alternar entre moverse y quedarse quieto según el color. |
-| `survival_rain` | PPO | Sobrevivir a una lluvia de proyectiles. |
-| `endurance` | SAC | Sobrevivir durante una partida larga mientras aumenta la dificultad. |
-| `mixup` | SAC | Adaptarse a patrones y niveles que cambian entre episodios. |
-| `collapsing_arena` | SAC | Esquivar mientras el área de juego se encoge. |
+| Modelo | Algoritmo | Tarea | Le irá mejor en episodios de... |
+|---|---|---|---|
+| `slalom_focus` | PPO | Esquivar usando foco: alternar entre moverse y quedarse quieto según el color. | `focus_precision`, escenario `slalom_switching`, nivel 3. |
+| `survival_rain` | PPO | Sobrevivir a una lluvia de proyectiles. | Modo `survival`, patrón `rain`. |
+| `endurance` | SAC | Sobrevivir durante una partida larga mientras aumenta la dificultad. | Modo `endurance`. |
+| `mixup` | SAC | Adaptarse a patrones y niveles que cambian entre episodios. | Modo `mixup`. |
+| `collapsing_arena` | SAC | Esquivar mientras el área de juego se encoge. | Modo `survival`, escenario `collapsing_arena`. |
 
 ```powershell
 .\.venv\Scripts\python.exe -m toriel_rl.sandbox_training --eval-only models/slalom_focus/sandbox_ppo.zip --mode focus_precision --scenario slalom_switching --level 3 --eval-episodes 50 --seed 10000
