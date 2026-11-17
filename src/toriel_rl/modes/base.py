@@ -65,3 +65,7 @@ class BaseMode(ABC):
     def select_pattern(self, rng, available: tuple[str, ...]) -> str | None:
         """Re-roll the episode pattern during reset (return None to use the defaults)."""
         return None
+
+    def select_scenario(self, rng, available: tuple[str, ...]) -> str | None:
+        """Re-roll the episode scenario during reset (return None for an open board)."""
+        return None

@@ -21,9 +21,11 @@ class FalteringAttack(BaseAttack):
         self.fireballs = [
             Fireball(
                 x=float(rng.uniform(5, self.config.board_width - 5)),
-                y=float(rng.uniform(-self.config.board_height, 0)),
+                # Close enough above the board and fast enough to cross it within one round
+                # (previously most fireballs were still mid-board when the round ended).
+                y=float(rng.uniform(-0.25 * self.config.board_height, 0)),
                 vx=float(rng.uniform(-20, 20)),
-                vy=float(rng.uniform(24, 48)),
+                vy=float(rng.uniform(56, 80)),
             )
             for _ in range(self.config.faltering_ball_count)
         ]

@@ -44,6 +44,7 @@ class TorielEnv(gym.Env):
         self._surface = None
         self._pygame = None
         self._clock = None
+        self.present_frames = True  # False: render() only draws; call present() to show it
 
     @property
     def spare_count(self) -> int:
@@ -158,17 +159,27 @@ class TorielEnv(gym.Env):
         if self._surface is None:
             pygame.init()
             scale = 3
-            self._surface = pygame.display.set_mode(
-                (self.config.board_width * scale, self.config.board_height * scale + 32)
-            )
+            size = (self.config.board_width * scale, self.config.board_height * scale + 32)
+            current = pygame.display.get_surface()
+            # Reuse an already-open window of the same size (showcase switches between envs)
+            # instead of recreating it, which makes the window blink.
+            self._surface = current if current is not None and current.get_size() == size else pygame.display.set_mode(size)
             pygame.display.set_caption("Toriel RL - entorno de esquiva")
             self._pygame = pygame
             self._clock = pygame.time.Clock()
         pygame.event.pump()
         draw_environment(self._surface, self, pygame)
-        pygame.display.flip()
-        self._clock.tick(max(1, round(1.0 / self.config.time_step)))
+        if self.present_frames:
+            self.present()
         return None
+
+    def present(self) -> None:
+        """Show the drawn frame and wait for the next tick (callers that draw overlays on
+        top set ``present_frames = False`` and call this once, so each frame flips once)."""
+        if self._pygame is None:
+            return
+        self._pygame.display.flip()
+        self._clock.tick(max(1, round(1.0 / self.config.time_step)))
 
     def close(self) -> None:
         if self._pygame is not None:

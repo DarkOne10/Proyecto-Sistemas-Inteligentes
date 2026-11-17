@@ -31,6 +31,11 @@ class ObsConfig:
         return self.k_bullets if self.mask_k is None else self.mask_k
 
 
+def _clip(value: float, low: float, high: float) -> float:
+    """Scalar clip; np.clip on Python floats dominated the per-step cost."""
+    return low if value < low else high if value > high else value
+
+
 def observation_size(config: ObsConfig) -> int:
     return BASE_FEATURE_COUNT + config.k_bullets * SLOT_FEATURE_COUNT
 
@@ -53,7 +58,7 @@ def build_observation(
         soul.x / board_width,
         soul.y / board_height,
         soul.hp / max_hp,
-        float(np.clip(phase, 0.0, 1.0)),
+        _clip(float(phase), 0.0, 1.0),
         float(iframes),
         float(focus),
         float(moving),
@@ -82,16 +87,16 @@ def build_observation(
         for color in BULLET_COLORS
     )
 
-    ordered = sorted(bullets, key=lambda bullet: hypot(bullet.x - soul.x, bullet.y - soul.y))
     limit = config.fill_limit
+    ordered = sorted(bullets, key=lambda bullet: (bullet.x - soul.x) ** 2 + (bullet.y - soul.y) ** 2)
     for bullet in ordered[:limit]:
         values.extend(
             [
                 (bullet.x - soul.x) / diagonal,
                 (bullet.y - soul.y) / diagonal,
-                float(np.clip(bullet.vx / config.max_bullet_speed, -1.0, 1.0)),
-                float(np.clip(bullet.vy / config.max_bullet_speed, -1.0, 1.0)),
-                float(np.clip(bullet.radius / config.max_bullet_radius, 0.0, 1.0)),
+                _clip(bullet.vx / config.max_bullet_speed, -1.0, 1.0),
+                _clip(bullet.vy / config.max_bullet_speed, -1.0, 1.0),
+                _clip(bullet.radius / config.max_bullet_radius, 0.0, 1.0),
                 *(1.0 if bullet.color == color else 0.0 for color in BULLET_COLORS),
                 0.0,
             ]

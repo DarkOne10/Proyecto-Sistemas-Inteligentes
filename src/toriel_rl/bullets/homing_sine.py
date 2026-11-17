@@ -11,6 +11,9 @@ class HomingSinePattern(BasePattern):
 
     name = "homing_sine"
     damage = 4
+    # Bullets only steer for a while, then keep their heading and leave the board.
+    # (Homing forever made them orbit the SOUL indefinitely: no policy could survive.)
+    homing_seconds = 1.5
 
     def __init__(self, config) -> None:
         super().__init__(config)
@@ -20,6 +23,7 @@ class HomingSinePattern(BasePattern):
         self._bullets: list[Fireball] = []
         self._angles: list[float] = []
         self._phases: list[float] = []
+        self._ages: list[float] = []
 
     @property
     def spawn_interval(self) -> float:
@@ -40,6 +44,7 @@ class HomingSinePattern(BasePattern):
         self._bullets = []
         self._angles = []
         self._phases = []
+        self._ages = []
 
     def _spawn(self, soul_x: float, soul_y: float) -> None:
         if self._rng is None:
@@ -59,6 +64,7 @@ class HomingSinePattern(BasePattern):
         )
         self._angles.append(angle)
         self._phases.append(float(self._rng.uniform(0.0, math.tau)))
+        self._ages.append(0.0)
 
     def update(self, dt: float, soul_x: float, soul_y: float) -> None:
         if self._rng is None:
@@ -73,11 +79,13 @@ class HomingSinePattern(BasePattern):
         height = self.config.board_height
         keep: list[int] = []
         for index, bullet in enumerate(self._bullets):
-            target = math.atan2(soul_y - bullet.y, soul_x - bullet.x)
-            diff = (target - self._angles[index] + math.pi) % math.tau - math.pi
-            turn = self.turn_rate * dt
-            self._angles[index] += max(-turn, min(turn, diff))
-            self._angles[index] += 1.6 * math.sin(2.5 * self._elapsed + self._phases[index]) * dt
+            self._ages[index] += dt
+            if self._ages[index] <= self.homing_seconds:
+                target = math.atan2(soul_y - bullet.y, soul_x - bullet.x)
+                diff = (target - self._angles[index] + math.pi) % math.tau - math.pi
+                turn = self.turn_rate * dt
+                self._angles[index] += max(-turn, min(turn, diff))
+                self._angles[index] += 1.6 * math.sin(2.5 * self._elapsed + self._phases[index]) * dt
             angle = self._angles[index]
             bullet.vx = self.speed * math.cos(angle)
             bullet.vy = self.speed * math.sin(angle)
@@ -88,6 +96,7 @@ class HomingSinePattern(BasePattern):
         self._bullets = [self._bullets[index] for index in keep]
         self._angles = [self._angles[index] for index in keep]
         self._phases = [self._phases[index] for index in keep]
+        self._ages = [self._ages[index] for index in keep]
 
     def bullets(self) -> list[Fireball]:
         return self._bullets

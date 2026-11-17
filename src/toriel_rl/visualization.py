@@ -109,6 +109,8 @@ def draw_sandbox(surface, env, pygame) -> None:
             ),
         )
 
+    # Bullets outside the Bullet Board are hidden, as in the game: they slide in from the edge.
+    surface.set_clip(pygame.Rect(offset_x, offset_y, board_width, board_height))
     for bullet in env.all_bullets():
         color = BULLET_COLORS.get(bullet.color, (255, 255, 255))
         center = (
@@ -119,6 +121,10 @@ def draw_sandbox(surface, env, pygame) -> None:
         pygame.draw.circle(surface, color, center, radius)
         if bullet.color == "green":
             pygame.draw.circle(surface, (235, 255, 240), center, max(1, int(radius * 0.45)))
+    surface.set_clip(None)
+    pygame.draw.rect(
+        surface, (245, 245, 245), (offset_x, offset_y, board_width, board_height), 3
+    )
 
     soul_x = offset_x + int(env.soul.x * window_scale)
     soul_y = offset_y + int(env.soul.y * window_scale)
