@@ -186,6 +186,8 @@ def open_envs(scenes, config: EnvConfig, *, action_mode: str | None = None, rend
         envs["sandbox"] = SoulSandboxEnv(
             config=config, render_mode=render_mode, action_mode=action_mode
         )
+    for env in envs.values():
+        env.present_frames = False  # the showcase draws HUD/title on top, then presents once
     return envs
 
 
@@ -326,7 +328,7 @@ def _show_scene(env, scene: Scene, policy, *, seed: int, seconds: float, title_s
                 return None
             env.render()
             draw_title_card(pygame.display.get_surface(), scene, pygame)
-            pygame.display.flip()
+            env.present()
 
     total = 0.0
     for _ in range(max(1, round(seconds / dt))):
@@ -337,7 +339,7 @@ def _show_scene(env, scene: Scene, policy, *, seed: int, seconds: float, title_s
         total += reward
         env.render()
         draw_arena_hud(pygame.display.get_surface(), env, scene, info, total, pygame)
-        pygame.display.flip()
+        env.present()
         if terminated or truncated:
             observation, info = reset_scene(env, scene, seed)
             total = 0.0

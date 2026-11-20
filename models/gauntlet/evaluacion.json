@@ -1,0 +1,552 @@
+{
+ "aleatorio": {
+  "overall": {
+   "return": -41.873444444444445,
+   "hp": 4.622222222222222,
+   "survival": 0.4444444444444445,
+   "worst_scene": "homing_sine"
+  },
+  "scenes": {
+   "sine_sweeper": {
+    "return": -45.81555555555554,
+    "hp": 2.6666666666666665,
+    "survival": 0.4444444444444444
+   },
+   "blue_ring": {
+    "return": -56.18888888888883,
+    "hp": 0.8888888888888888,
+    "survival": 0.2222222222222222
+   },
+   "orange_gates": {
+    "return": -21.064444444444565,
+    "hp": 8.88888888888889,
+    "survival": 0.8888888888888888
+   },
+   "rain": {
+    "return": -36.413333333333306,
+    "hp": 4.888888888888889,
+    "survival": 0.6666666666666666
+   },
+   "homing_sine": {
+    "return": -64.8688888888888,
+    "hp": 0.0,
+    "survival": 0.0
+   },
+   "dart_volley": {
+    "return": -64.1999999999999,
+    "hp": 0.0,
+    "survival": 0.0
+   },
+   "spiral_barrage": {
+    "return": -66.00444444444437,
+    "hp": 0.0,
+    "survival": 0.0
+   },
+   "drifter": {
+    "return": -20.611111111111164,
+    "hp": 9.777777777777779,
+    "survival": 0.7777777777777778
+   },
+   "blue_rain": {
+    "return": -35.34444444444442,
+    "hp": 6.222222222222222,
+    "survival": 0.5555555555555556
+   },
+   "cross_fire": {
+    "return": -17.904444444444483,
+    "hp": 10.222222222222221,
+    "survival": 0.8888888888888888
+   },
+   "ricochet": {
+    "return": -21.17111111111116,
+    "hp": 9.777777777777779,
+    "survival": 0.7777777777777778
+   },
+   "aimed_burst": {
+    "return": -51.97111111111106,
+    "hp": 2.2222222222222223,
+    "survival": 0.2222222222222222
+   },
+   "zigzag_rain": {
+    "return": -27.371111111111205,
+    "hp": 7.111111111111111,
+    "survival": 0.7777777777777778
+   },
+   "vortex": {
+    "return": -5.293333333333401,
+    "hp": 15.11111111111111,
+    "survival": 0.7777777777777778
+   },
+   "vertical_lanes": {
+    "return": -31.646666666666697,
+    "hp": 6.666666666666667,
+    "survival": 0.6666666666666666
+   },
+   "spiral_evasion": {
+    "return": -62.67333333333329,
+    "hp": 0.4444444444444444,
+    "survival": 0.1111111111111111
+   },
+   "slalom_switching": {
+    "return": -54.48666666666654,
+    "hp": 1.3333333333333333,
+    "survival": 0.2222222222222222
+   },
+   "pinball": {
+    "return": -37.86222222222224,
+    "hp": 4.888888888888889,
+    "survival": 0.5555555555555556
+   },
+   "narrow_corridor": {
+    "return": -64.19999999999989,
+    "hp": 0.0,
+    "survival": 0.0
+   },
+   "collapsing_arena": {
+    "return": -52.377777777777794,
+    "hp": 1.3333333333333333,
+    "survival": 0.3333333333333333
+   }
+  }
+ },
+ "survival_rain (viejo)": {
+  "overall": {
+   "return": -13.69133333333339,
+   "hp": 11.711111111111112,
+   "survival": 0.8388888888888889,
+   "worst_scene": "spiral_barrage"
+  },
+  "scenes": {
+   "sine_sweeper": {
+    "return": -38.96222222222224,
+    "hp": 4.444444444444445,
+    "survival": 0.5555555555555556
+   },
+   "blue_ring": {
+    "return": 8.999999999999893,
+    "hp": 18.666666666666668,
+    "survival": 1.0
+   },
+   "orange_gates": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "rain": {
+    "return": -5.444444444444532,
+    "hp": 13.777777777777779,
+    "survival": 1.0
+   },
+   "homing_sine": {
+    "return": -46.788888888888856,
+    "hp": 3.5555555555555554,
+    "survival": 0.3333333333333333
+   },
+   "dart_volley": {
+    "return": -35.39555555555549,
+    "hp": 6.222222222222222,
+    "survival": 0.5555555555555556
+   },
+   "spiral_barrage": {
+    "return": -55.5333333333333,
+    "hp": 0.8888888888888888,
+    "survival": 0.2222222222222222
+   },
+   "drifter": {
+    "return": -0.44444444444453457,
+    "hp": 15.555555555555555,
+    "survival": 1.0
+   },
+   "blue_rain": {
+    "return": 7.888888888888794,
+    "hp": 18.22222222222222,
+    "survival": 1.0
+   },
+   "cross_fire": {
+    "return": 2.3333333333332646,
+    "hp": 16.444444444444443,
+    "survival": 1.0
+   },
+   "ricochet": {
+    "return": 1.222222222222124,
+    "hp": 16.0,
+    "survival": 1.0
+   },
+   "aimed_burst": {
+    "return": -27.8955555555556,
+    "hp": 6.222222222222222,
+    "survival": 0.8888888888888888
+   },
+   "zigzag_rain": {
+    "return": -15.20666666666676,
+    "hp": 11.555555555555555,
+    "survival": 0.7777777777777778
+   },
+   "vortex": {
+    "return": 0.6666666666665618,
+    "hp": 16.0,
+    "survival": 1.0
+   },
+   "vertical_lanes": {
+    "return": 11.22222222222212,
+    "hp": 19.11111111111111,
+    "survival": 1.0
+   },
+   "spiral_evasion": {
+    "return": -35.02222222222221,
+    "hp": 5.333333333333333,
+    "survival": 0.6666666666666666
+   },
+   "slalom_switching": {
+    "return": -27.66666666666675,
+    "hp": 5.333333333333333,
+    "survival": 1.0
+   },
+   "pinball": {
+    "return": 3.4444444444443465,
+    "hp": 16.88888888888889,
+    "survival": 1.0
+   },
+   "narrow_corridor": {
+    "return": -14.173333333333375,
+    "hp": 11.11111111111111,
+    "survival": 0.8888888888888888
+   },
+   "collapsing_arena": {
+    "return": -21.071111111111147,
+    "hp": 8.88888888888889,
+    "survival": 0.8888888888888888
+   }
+  }
+ },
+ "mixup (viejo)": {
+  "overall": {
+   "return": -10.702333333333407,
+   "hp": 12.4,
+   "survival": 0.9,
+   "worst_scene": "narrow_corridor"
+  },
+  "scenes": {
+   "sine_sweeper": {
+    "return": -11.000000000000112,
+    "hp": 12.0,
+    "survival": 1.0
+   },
+   "blue_ring": {
+    "return": -24.366666666666763,
+    "hp": 7.555555555555555,
+    "survival": 0.8888888888888888
+   },
+   "orange_gates": {
+    "return": -12.111111111111212,
+    "hp": 11.555555555555555,
+    "survival": 1.0
+   },
+   "rain": {
+    "return": 10.111111111111002,
+    "hp": 18.666666666666668,
+    "survival": 1.0
+   },
+   "homing_sine": {
+    "return": -19.228888888888967,
+    "hp": 9.777777777777779,
+    "survival": 0.8888888888888888
+   },
+   "dart_volley": {
+    "return": -47.95333333333325,
+    "hp": 2.2222222222222223,
+    "survival": 0.4444444444444444
+   },
+   "spiral_barrage": {
+    "return": -24.333333333333442,
+    "hp": 6.666666666666667,
+    "survival": 1.0
+   },
+   "drifter": {
+    "return": -0.44444444444454223,
+    "hp": 15.555555555555555,
+    "survival": 1.0
+   },
+   "blue_rain": {
+    "return": 6.777777777777683,
+    "hp": 17.77777777777778,
+    "survival": 1.0
+   },
+   "cross_fire": {
+    "return": -1.5555555555556488,
+    "hp": 15.11111111111111,
+    "survival": 1.0
+   },
+   "ricochet": {
+    "return": -4.888888888888975,
+    "hp": 14.222222222222221,
+    "survival": 1.0
+   },
+   "aimed_burst": {
+    "return": -30.162222222222308,
+    "hp": 5.333333333333333,
+    "survival": 0.8888888888888888
+   },
+   "zigzag_rain": {
+    "return": 2.33333333333324,
+    "hp": 16.444444444444443,
+    "survival": 1.0
+   },
+   "vortex": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "vertical_lanes": {
+    "return": 9.555555555555461,
+    "hp": 18.666666666666668,
+    "survival": 1.0
+   },
+   "spiral_evasion": {
+    "return": -39.164444444444385,
+    "hp": 3.5555555555555554,
+    "survival": 0.6666666666666666
+   },
+   "slalom_switching": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "pinball": {
+    "return": -0.4444444444445606,
+    "hp": 15.555555555555555,
+    "survival": 1.0
+   },
+   "narrow_corridor": {
+    "return": -55.282222222222146,
+    "hp": 1.3333333333333333,
+    "survival": 0.2222222222222222
+   },
+   "collapsing_arena": {
+    "return": 0.11111111111101746,
+    "hp": 16.0,
+    "survival": 1.0
+   }
+  }
+ },
+ "gauntlet mejor": {
+  "overall": {
+   "return": 7.680222222222123,
+   "hp": 18.044444444444448,
+   "survival": 0.9888888888888889,
+   "worst_scene": "spiral_barrage"
+  },
+  "scenes": {
+   "sine_sweeper": {
+    "return": -3.7777777777778803,
+    "hp": 14.222222222222221,
+    "survival": 1.0
+   },
+   "blue_ring": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "orange_gates": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "rain": {
+    "return": 12.333333333333236,
+    "hp": 19.555555555555557,
+    "survival": 1.0
+   },
+   "homing_sine": {
+    "return": 11.222222222222117,
+    "hp": 19.11111111111111,
+    "survival": 1.0
+   },
+   "dart_volley": {
+    "return": 8.999999999999917,
+    "hp": 18.666666666666668,
+    "survival": 1.0
+   },
+   "spiral_barrage": {
+    "return": -24.617777777777867,
+    "hp": 8.0,
+    "survival": 0.7777777777777778
+   },
+   "drifter": {
+    "return": 10.666666666666568,
+    "hp": 19.11111111111111,
+    "survival": 1.0
+   },
+   "blue_rain": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "cross_fire": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "ricochet": {
+    "return": 8.999999999999913,
+    "hp": 18.666666666666668,
+    "survival": 1.0
+   },
+   "aimed_burst": {
+    "return": 7.3333333333332495,
+    "hp": 18.22222222222222,
+    "survival": 1.0
+   },
+   "zigzag_rain": {
+    "return": 7.8888888888888005,
+    "hp": 18.22222222222222,
+    "survival": 1.0
+   },
+   "vortex": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "vertical_lanes": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "spiral_evasion": {
+    "return": -9.33333333333347,
+    "hp": 12.0,
+    "survival": 1.0
+   },
+   "slalom_switching": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "pinball": {
+    "return": 8.999999999999904,
+    "hp": 18.666666666666668,
+    "survival": 1.0
+   },
+   "narrow_corridor": {
+    "return": 4.555555555555459,
+    "hp": 16.88888888888889,
+    "survival": 1.0
+   },
+   "collapsing_arena": {
+    "return": 12.333333333333234,
+    "hp": 19.555555555555557,
+    "survival": 1.0
+   }
+  }
+ },
+ "gauntlet final": {
+  "overall": {
+   "return": 10.219111111111008,
+   "hp": 18.844444444444445,
+   "survival": 0.9944444444444445,
+   "worst_scene": "spiral_barrage"
+  },
+  "scenes": {
+   "sine_sweeper": {
+    "return": -1.5555555555556513,
+    "hp": 15.11111111111111,
+    "survival": 1.0
+   },
+   "blue_ring": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "orange_gates": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "rain": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "homing_sine": {
+    "return": 7.888888888888802,
+    "hp": 18.22222222222222,
+    "survival": 1.0
+   },
+   "dart_volley": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "spiral_barrage": {
+    "return": 2.826666666666554,
+    "hp": 16.88888888888889,
+    "survival": 0.8888888888888888
+   },
+   "drifter": {
+    "return": 12.333333333333236,
+    "hp": 19.555555555555557,
+    "survival": 1.0
+   },
+   "blue_rain": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "cross_fire": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "ricochet": {
+    "return": 10.666666666666572,
+    "hp": 19.11111111111111,
+    "survival": 1.0
+   },
+   "aimed_burst": {
+    "return": -0.44444444444452713,
+    "hp": 16.0,
+    "survival": 1.0
+   },
+   "zigzag_rain": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "vortex": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "vertical_lanes": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "spiral_evasion": {
+    "return": -7.666666666666795,
+    "hp": 12.444444444444445,
+    "survival": 1.0
+   },
+   "slalom_switching": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "pinball": {
+    "return": 12.333333333333236,
+    "hp": 19.555555555555557,
+    "survival": 1.0
+   },
+   "narrow_corridor": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   },
+   "collapsing_arena": {
+    "return": 13.999999999999897,
+    "hp": 20.0,
+    "survival": 1.0
+   }
+  }
+ }
+}

@@ -1,0 +1,14 @@
+timesteps,minutes,return,hp,survival,worst_scene
+250016,2.4,-5.451,14.267,0.883,spiral_barrage
+500000,4.6,-1.33,15.267,0.95,homing_sine
+750016,6.9,2.395,16.4,0.967,spiral_barrage
+1000000,9.1,6.15,17.533,0.983,spiral_barrage
+1250016,11.2,8.25,18.133,1.0,sine_sweeper
+1500000,13.6,7.267,18.133,0.95,spiral_barrage
+1750016,15.9,5.775,17.733,0.933,spiral_barrage
+2000000,18.4,6.64,17.867,0.967,spiral_barrage
+2250016,20.8,6.169,17.733,0.967,spiral_barrage
+2500000,23.2,7.833,18.0,1.0,sine_sweeper
+2750016,25.4,8.191,18.333,0.967,spiral_barrage
+3000000,27.7,9.709,18.867,0.967,spiral_barrage
+3014656,28.2,9.792,18.867,0.967,spiral_barrage

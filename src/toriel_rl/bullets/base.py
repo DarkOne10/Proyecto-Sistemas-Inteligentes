@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import replace
 
 import numpy as np
 
@@ -14,7 +15,13 @@ class BasePattern(ABC):
     level: int = 1
 
     def __init__(self, config: EnvConfig) -> None:
+        self.base_config = config
         self.config = config
+
+    def resize(self, width: float, height: float) -> None:
+        """Follow the live Bullet Board: spawns, bounces and despawns use its real size."""
+        if (self.config.board_width, self.config.board_height) != (width, height):
+            self.config = replace(self.base_config, board_width=width, board_height=height)
 
     @abstractmethod
     def reset(self, rng: np.random.Generator) -> None:

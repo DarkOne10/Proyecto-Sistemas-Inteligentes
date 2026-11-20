@@ -75,7 +75,8 @@ class SlalomSwitchingScenario(BaseScenario):
         for wall in self._walls:
             if wall["y"] > height + 40.0:
                 others = [other["y"] for other in self._walls if other is not wall]
-                wall["y"] = min(others) - self.wall_spacing
+                # Re-enter above the board so a recycled row never pops in mid-screen.
+                wall["y"] = min(min(others) - self.wall_spacing, -40.0)
                 wall["gap_side"] = 1 - wall["gap_side"]
                 wall["color"] = "blue" if wall["color"] == "orange" else "orange"
                 wall["bullets"] = self._make_row(wall)

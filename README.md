@@ -125,6 +125,36 @@ python -m toriel_rl.arena --model models/mixup/sandbox_sac.zip
 python -m toriel_rl.arena --random
 ```
 
+### Modelo generalista `gauntlet` (recomendado)
+
+`models/gauntlet/sandbox_ppo.zip` es un único PPO (acción de foco) entrenado 3 M de pasos
+en el modo `gauntlet`: cada episodio sortea patrón, escenario (o tablero abierto) y nivel
+1–3, así que aprende a esquivar **cualquier** ataque del sandbox en vez de uno solo.
+Evaluado con semillas no vistas (20 escenas × 3 niveles × 3 episodios de 15 s):
+
+| Política | Supervivencia | Retorno medio |
+|---|---|---|
+| Aleatoria | 44.4 % | −41.9 |
+| `survival_rain` (PPO especializado) | 83.9 % | −13.7 |
+| `mixup` (SAC especializado) | 90.0 % | −10.7 |
+| **`gauntlet`** | **99.4 %** | **+10.2** |
+
+```bash
+# usarlo en la vitrina / arena
+python -m toriel_rl.arena --model models/gauntlet/sandbox_ppo.zip
+python -m toriel_rl.showcase --model models/gauntlet/sandbox_ppo.zip
+# reentrenarlo (~30 min en CPU) y compararlo contra la política aleatoria
+python -m toriel_rl.sandbox_generalist --timesteps 3000000
+python -m toriel_rl.sandbox_generalist --eval-only models/gauntlet/sandbox_ppo.zip models/mixup/sandbox_sac.zip
+# ver la evolución del aprendizaje: guarda instantáneas (25k ... 3M pasos) y las reproduce
+# una tras otra en la misma escena y semilla (N = siguiente, al final un resumen)
+python -m toriel_rl.sandbox_generalist --timesteps 3000000 --checkpoint-dir checkpoints/gauntlet
+python -m toriel_rl.gauntlet_progress --dir checkpoints/gauntlet --scene aimed_burst
+```
+
+Los ataques originales de Toriel (`fire_helix`, `fire_waves`, `paw_sweep`) siguen usando
+la tabla Q (`results/q_table.json`) o la política aleatoria.
+
 El repositorio incluye cinco modelos PPO/SAC especializados:
 `models/slalom_focus/sandbox_ppo.zip` (`focus_precision`/`slalom_switching`),
 `models/survival_rain/sandbox_ppo.zip` (`survival`/`rain`),

@@ -32,7 +32,7 @@ def _run_episode(env, scene: Scene, policy, *, seed: int, seconds: float, title_
                 return None
             env.render()
             draw_title_card(pygame.display.get_surface(), scene, pygame)
-            pygame.display.flip()
+            env.present()
 
     total = 0.0
     while True:
@@ -43,7 +43,7 @@ def _run_episode(env, scene: Scene, policy, *, seed: int, seconds: float, title_
         total += reward
         env.render()
         draw_arena_hud(pygame.display.get_surface(), env, scene, info, total, pygame)
-        pygame.display.flip()
+        env.present()
         if terminated or truncated:
             break
 

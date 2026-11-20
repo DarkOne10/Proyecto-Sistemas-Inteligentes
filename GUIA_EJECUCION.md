@@ -169,6 +169,23 @@ El resultado esperado al final es `OK`. Si cambias la observación del entorno y
 
 ## 8. Vitrina y arena en vivo
 
+**Modelo recomendado: `gauntlet`.** Es un único modelo PPO entrenado con escenas
+aleatorias (cualquier patrón, escenario y nivel). Sobrevive el 99.4 % de los episodios
+de prueba, frente al 90 % del mejor modelo especializado y el 44 % de la política aleatoria:
+
+```powershell
+.\.venv\Scripts\python.exe -m toriel_rl.arena --model models/gauntlet/sandbox_ppo.zip
+.\.venv\Scripts\python.exe -m toriel_rl.showcase --model models/gauntlet/sandbox_ppo.zip
+```
+
+Para ver cómo mejora con el entrenamiento, entrénalo guardando instantáneas y
+reprodúcelas en orden (sin entrenar, 25 000 pasos, ..., 3 000 000 pasos):
+
+```powershell
+.\.venv\Scripts\python.exe -m toriel_rl.sandbox_generalist --checkpoint-dir checkpoints/gauntlet
+.\.venv\Scripts\python.exe -m toriel_rl.gauntlet_progress --dir checkpoints/gauntlet --scene aimed_burst
+```
+
 El repositorio incluye cinco modelos PPO/SAC, cada uno especializado en una
 tarea. Según la evaluación visual, `mixup` es el modelo recomendado para mostrar
 el proyecto; no hay un modelo que sea el mejor para todas las escenas.

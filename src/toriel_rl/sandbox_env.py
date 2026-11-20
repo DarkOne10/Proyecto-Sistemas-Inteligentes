@@ -12,7 +12,7 @@ from toriel_rl.entities.soul import Soul
 from toriel_rl.modes import BaseMode, StepContext, action_mode_for, create_mode
 from toriel_rl.obs import ObsConfig, build_observation, observation_size
 from toriel_rl.rewards import RewardConfig
-from toriel_rl.scenarios import BaseScenario, create_scenario
+from toriel_rl.scenarios import SCENARIO_TYPES, BaseScenario, create_scenario
 
 DODGE_GAP = 12.0
 CONTINUOUS_DEADZONE = 0.1
@@ -91,6 +91,7 @@ class SoulSandboxEnv(gym.Env):
         self._surface = None
         self._pygame = None
         self._clock = None
+        self.present_frames = True  # False: render() only draws; call present() to show it
 
     @property
     def elapsed(self) -> float:
@@ -135,6 +136,8 @@ class SoulSandboxEnv(gym.Env):
         level = self.mode.level
 
         scenario_name = options.get("scenario", self.default_scenario)
+        if scenario_name is None and "scenario" not in options:
+            scenario_name = self.mode.select_scenario(self.np_random, tuple(SCENARIO_TYPES))
         self.scenario = create_scenario(scenario_name, self.config) if scenario_name else None
         if self.scenario is not None:
             self.scenario.level = level
@@ -152,6 +155,7 @@ class SoulSandboxEnv(gym.Env):
 
         self.pattern = create_pattern(pattern_name, self.config)
         self.pattern.level = level
+        self._resize_owners(*self._board_size_at(0.0))
         self.pattern.reset(self.np_random)
 
         self.soul = Soul(
@@ -291,17 +295,27 @@ class SoulSandboxEnv(gym.Env):
         if self._surface is None:
             pygame.init()
             scale = 3
-            self._surface = pygame.display.set_mode(
-                (self.config.board_width * scale, self.config.board_height * scale + 32)
-            )
+            size = (self.config.board_width * scale, self.config.board_height * scale + 32)
+            current = pygame.display.get_surface()
+            # Reuse an already-open window of the same size (showcase switches between envs)
+            # instead of recreating it, which makes the window blink.
+            self._surface = current if current is not None and current.get_size() == size else pygame.display.set_mode(size)
             pygame.display.set_caption("Toriel RL - Red SOUL sandbox")
             self._pygame = pygame
             self._clock = pygame.time.Clock()
         pygame.event.pump()
         draw_sandbox(self._surface, self, pygame)
-        pygame.display.flip()
-        self._clock.tick(max(1, round(1.0 / self.config.time_step)))
+        if self.present_frames:
+            self.present()
         return None
+
+    def present(self) -> None:
+        """Show the drawn frame and wait for the next tick (callers that draw overlays on
+        top set ``present_frames = False`` and call this once, so each frame flips once)."""
+        if self._pygame is None:
+            return
+        self._pygame.display.flip()
+        self._clock.tick(max(1, round(1.0 / self.config.time_step)))
 
     def close(self) -> None:
         if self._pygame is not None:
@@ -319,16 +333,27 @@ class SoulSandboxEnv(gym.Env):
             self.pattern.level = dynamic
             if self.scenario is not None:
                 self.scenario.level = dynamic
-        size = None
-        if self.mode is not None:
-            size = self.mode.board_size(self._elapsed)
-        if size is None and self.scenario is not None:
-            size = self.scenario.board_size(self._elapsed)
-        if size is None:
-            size = (float(self.config.board_width), float(self.config.board_height))
-        self.board_width, self.board_height = size
+        self.board_width, self.board_height = self._board_size_at(self._elapsed)
+        self._resize_owners(self.board_width, self.board_height)
         self.soul.x = min(max(self.soul.x, self.soul.radius), self.board_width - self.soul.radius)
         self.soul.y = min(max(self.soul.y, self.soul.radius), self.board_height - self.soul.radius)
+
+    def _resize_owners(self, width: float, height: float) -> None:
+        """Keep pattern and scenario geometry in sync with the live Bullet Board."""
+        for owner in (self.pattern, self.scenario):
+            resize = getattr(owner, "resize", None)
+            if resize is not None:
+                resize(width, height)
+
+    def _board_size_at(self, elapsed: float) -> tuple[float, float]:
+        size = None
+        if self.mode is not None:
+            size = self.mode.board_size(elapsed)
+        if size is None and self.scenario is not None:
+            size = self.scenario.board_size(elapsed)
+        if size is None:
+            size = (float(self.config.board_width), float(self.config.board_height))
+        return float(size[0]), float(size[1])
 
     def _resolve_obstacles(self) -> None:
         for ox, oy, ow, oh in self.obstacles:
